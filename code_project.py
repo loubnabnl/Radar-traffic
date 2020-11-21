@@ -49,6 +49,11 @@ description.iloc[:,2:5]
 description.iloc[:,5:9]
 
 #we can see that we have data over the years: 2017, 2018, 2019
+#month 1:12
+#day 1:31
+#day of week 0:6
+#Hour 0:23
+
 #Visualization of the data
 #data of the year 2017
 data17=data[data['Year']==2017]
@@ -58,7 +63,7 @@ sorted(list(data17['Month'].unique())) #[6, 7, 8, 9, 10, 11, 12]
 #for month 6
 data17_M1=data17[data17['Month']==6]
 data17_M1.shape[0] #3928
-data17_M1['Day of Week'].unique() 
+data17_M1['Day of Week'].unique() #[4, 3, 2, 1, 0]
 #volume per day of week fo the year 2017
 plt.plot(data17_M1['Day of Week'],data17_M1['Volume'])
 
@@ -70,9 +75,10 @@ data18['Month'].unique() #[ 1,  8,  2,  9,  3, 10,  4,  5, 11, 12,  6,  7]
 sorted(list(data18['Month'].unique())) #[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]
 #for month 1
 data18_M1=data18[data18['Month']==1]
-data18_M1.shape[0]
+data18_M1.shape[0] #162188
+data18_M1['Day of Week'].unique() #[2, 3, 4, 5, 6, 0, 1]
 #volume per month fo the year 2017
-plt.plot(data18['Month'],data18['Volume'])
+plt.plot(data18_M1['Day of Week'],data18_M1['Volume'])
 
 #year 2019
 data19=data[data['Year']==2019]
@@ -81,13 +87,11 @@ data19['Month'].unique() #[ 9,  4,  1,  2,  3,  8,  7,  6,  5, 11, 10]
 sorted(list(data19['Month'].unique())) #[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]
 #for month 1
 data19_M1=data19[data19['Month']==1]
-data19_M1.shape[0]
+data19_M1.shape[0] #135593
+data19_M1['Day of Week'].unique() #[3, 4, 2, 5, 0, 1, 6]
 #volume per month fo the year 2017
-plt.plot(data19['Month'],data19['Volume'])
+plt.plot(data19_M1['Day of Week'],data19_M1['Volume'])
 
 
-#year 2019
-
-
-##Scaling item_cnt_day 
+##Standard scaler
 standard_X=preprocessing.StandardScaler()
