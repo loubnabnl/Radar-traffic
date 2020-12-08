@@ -95,8 +95,15 @@ plt.plot(data19_M1['Day of Week'],data19_M1['Volume'])
 #drpping time bin column
 data.drop('Time Bin', inplace=True, axis=1)
 data.columns
-#sort values -grouping by location name, date..
+#sort values -grouping by location name, date.. for a better vizualization
 data.sort_values(['location_name','Year','Month','Day','Hour','Minute'],inplace=True)
+
+#liste=list(data.columns)
+#liste[:8] #columns until Hour
+#we group data by summing the volume of over minutes for the say hou(day, month..)
+group= data.groupby(by = ['location_name', 'location_latitude','location_longitude','Year','Month','Day','Day of Week','Hour','Direction'])['Volume'].sum()
+
+
 ##Standard scaler
 #standard_X=preprocessing.StandardScaler()
 data.head()
