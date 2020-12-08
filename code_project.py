@@ -92,6 +92,11 @@ data19_M1['Day of Week'].unique() #[3, 4, 2, 5, 0, 1, 6]
 #volume per month fo the year 2017
 plt.plot(data19_M1['Day of Week'],data19_M1['Volume'])
 
-
+#drpping time bin column
+data.drop('Time Bin', inplace=True, axis=1)
+data.columns
+#sort values -grouping by location name, date..
+data.sort_values(['location_name','Year','Month','Day','Hour','Minute'],inplace=True)
 ##Standard scaler
-standard_X=preprocessing.StandardScaler()
+#standard_X=preprocessing.StandardScaler()
+data.head()
