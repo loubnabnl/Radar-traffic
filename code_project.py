@@ -92,7 +92,8 @@ data19_M1['Day of Week'].unique() #[3, 4, 2, 5, 0, 1, 6]
 #volume per month fo the year 2017
 plt.plot(data19_M1['Day of Week'],data19_M1['Volume'])
 
-############ DATA PREPROCESSING############
+###########################################
+##DATA PREPROCESSING
 ###########################################
 data = pd.read_csv('C:\\Users\\33758\\Desktop\\3A Mines\\Machine learning\\Radar Traffic\\Radar_Traffic_Counts.csv')
 
@@ -131,10 +132,12 @@ group.head()
 #rearrange data
 d = {'location_name': group['location_name'], 'Direction': group['Direction'],'Date': group['Date'],'Volume':group['Volume']}
 data2=pd.DataFrame(data=d)
-#number of locations
-data2[['location_name','Direction']].nunique() #23 different location names
+##This is the data we will use from now on 
 
+###########################################
 ##count number of couples (location, direction)
+###########################################
+
 count_u = data2.groupby(['location_name','Direction']).size().reset_index().rename(columns={0:'count'})
 #40 rows=40 couples (location, direction)
 count_u.info()
@@ -146,8 +149,19 @@ count_u['count'].mean() #12392.15
 new_data = count_u[count_u['count'] > 100] #6 couples were deleted, 34 are left
 #for each location and direction we will have a time series
 #where the volume is a function of "Date-Hour"
-sales=train['shop_id'==shop & 'item_category'==category]['item_cnt_day']
 
+loc=' BURNET RD / PALM WAY (IBM DRIVEWAY)'
+direct='NB'
+Get_Time_Series(loc,direct)
+
+def Get_Time_Series(location,direction):
+    extract=data2.loc[data2.location_name==location][data2.Direction==direction]
+    volume=extract['Volume'].to_numpy()
+    return volume
+#list of location_names
+names=data2['location_name'].unique().tolist()
+#list of directions 
+directions=['NB','SB','EB','WB','None']
 
 ##Standard scaler
 #standard_X=preprocessing.StandardScaler()
