@@ -13,8 +13,7 @@ We have 4603861 and 12 columns. The columns are the following:
 * **Time Bin** : Shows hour and minute
 * **Direction** : Direction of traffic (SB:South bound, NB:North bound, EB: East bound, WB: West bound or None)
 * **Volume**: Number of vehicles detected by the sensor, this is our target variable.
-The figure below shows an extract of our data
-<img src="dephell.png" width="50%"/> <br>
+
 #### Remark:
 We have data over the years: 2017, 2018, 2019, days of week vary from 0 to 6, and hours from 0 to 23.
 
@@ -27,8 +26,9 @@ In this section we will present the preprocessing phase. First, we are going to 
 * location_latitude, location_longitude: we will only need location_name for the prediction
 * Day of week: we will not use this information, because we want to build our time series as a series with a 1 hour unit for each day like: 2017-09-03 02:00:00, 2017-09-03 03:00:00...  <br>
 Next for a given day, location and direction, we will sum the traffic volume over minutes to obtain the traffic per hour.
-The figure below shows an extract of the data we get after these transformations
-<img src="dephell.png" width="50%"/><br>
+The figure below shows an extract of the data we get after these transformations<br>
+<img src="https://user-images.githubusercontent.com/44069155/101657104-c955df00-3a43-11eb-97e8-a6adda17d239.png" width="50%"/>
+<br>
 ## References
 <a id="1">[1]</a> 
 https://members.loria.fr/CCerisara/#courses/machine_learning/ <br>
