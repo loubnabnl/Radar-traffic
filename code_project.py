@@ -102,8 +102,13 @@ data.sort_values(['location_name','Year','Month','Day','Hour','Minute'],inplace=
 #liste[:8] #columns until Hour
 #we group data by summing the volume of over minutes for the say hou(day, month..)
 group= data.groupby(by = ['location_name', 'location_latitude','location_longitude','Year','Month','Day','Day of Week','Hour','Direction'])['Volume'].sum()
-
-
+group=group.to_frame()
+group.head()
+#grouping year month and day into datatime
+date1 = data[['Year','Month','Day']]
+data.drop('Month', inplace=True, axis=1)
+data.drop('Day', inplace=True, axis=1)
+data[['Year']]=pd.to_datetime(date1)
 ##Standard scaler
 #standard_X=preprocessing.StandardScaler()
 data.head()
