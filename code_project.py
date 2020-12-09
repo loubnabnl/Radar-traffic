@@ -128,11 +128,26 @@ data.sort_values(['location_name','Date','Minute'],inplace=True)
 group= data.groupby(by = ['location_name','Date','Direction'], as_index=False)['Volume'].sum()
 group.head()
 
-
+#rearrange data
+d = {'location_name': group['location_name'], 'Direction': group['Direction'],'Date': group['Date'],'Volume':group['Volume']}
+data2=pd.DataFrame(data=d)
 #number of locations
-group['location_name'].nunique() #23
+data2[['location_name','Direction']].nunique() #23 different location names
+
+##count number of couples (location, direction)
+count_u = data2.groupby(['location_name','Direction']).size().reset_index().rename(columns={0:'count'})
+#40 rows=40 couples (location, direction)
+count_u.info()
+#let's check if all the couples have sufficient data
+min(count_u['count']) #1
+max(count_u['count']) # 17206
+count_u['count'].mean() #12392.15
+#we delete couples who have less than 100 counts
+new_data = count_u[count_u['count'] > 100] #6 couples were deleted, 34 are left
 #for each location and direction we will have a time series
 #where the volume is a function of "Date-Hour"
+sales=train['shop_id'==shop & 'item_category'==category]['item_cnt_day']
+
 
 ##Standard scaler
 #standard_X=preprocessing.StandardScaler()
