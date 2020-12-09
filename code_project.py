@@ -92,30 +92,45 @@ data19_M1['Day of Week'].unique() #[3, 4, 2, 5, 0, 1, 6]
 #volume per month fo the year 2017
 plt.plot(data19_M1['Day of Week'],data19_M1['Volume'])
 
-#drpping time bin column
+############ DATA PREPROCESSING############
+###########################################
+data = pd.read_csv('C:\\Users\\33758\\Desktop\\3A Mines\\Machine learning\\Radar Traffic\\Radar_Traffic_Counts.csv')
+
+##The idea behind the following transformations is to have a Time Series 
+##of Volume as a function of the date for each couple (location_name,direction)
+##The date unit will be 1 hour
+
+##dropping some columns
+#we drop the columns we will not need in our model
+#we drop time bin, this information is already in Hour and Minute
 data.drop('Time Bin', inplace=True, axis=1)
+#we will base our model only on location name
+data.drop('location_latitude', inplace=True, axis=1)
+data.drop('location_longitude', inplace=True, axis=1)
+#Our time series will vary by date: hour-day/month/year
+#we drop day of week column
+data.drop('Day of Week', inplace=True, axis=1)
 data.columns
 
-#grouping year month and day into datatime
-date1 = data[['Year','Month','Day']]
+##grouping year month day and hour into one datatime column "Date"
+#each Date value is the hour of a given day (day/month/year)
+date1 = data[['Year','Month','Day','Hour']] #save year, month day and hour to put them later in one column
 data.drop('Month', inplace=True, axis=1)
 data.drop('Day', inplace=True, axis=1)
+data.drop('Hour', inplace=True, axis=1)
 data[['Year']]=pd.to_datetime(date1,unit='D')
-data.rename(columns={"Year": "Date"})#doesn't work
+data=data.rename(columns={"Year": "Date"})#rename the column of date
 
-#Drop day of week
-data.drop('Day of Week', inplace=True, axis=1)
+#sort values-grouping by location name, date, minute for a better vizualization
+data.sort_values(['location_name','Date','Minute'],inplace=True)
 
-#sort values -grouping by location name, date.. for a better vizualization
-data.sort_values(['location_name','Date','Hour','Minute'],inplace=True)
-
-#liste=list(data.columns)
-#liste[:8] #columns until Hour
-#we group data by summing the volume of over minutes for the say hou(day, month..)
-group= data.groupby(by = ['location_name', 'location_latitude','location_longitude','Year','Hour','Direction'])['Volume'].sum()
-group=group.to_frame()
+#we sum the volume over minutes for each hour-Date-
+group= data.groupby(by = ['location_name','Date','Direction'], as_index=False)['Volume'].sum()
 group.head()
 
+
+#number of locations
+group['location_name'].nunique() #23
 #for each location and direction we will have a time series
 #where the volume is a function of "Date-Hour"
 
