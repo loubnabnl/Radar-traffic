@@ -189,10 +189,10 @@ class TimeCNN(nn.Module):
             nn.ReLU(),
             nn.AdaptiveMaxPool1d(8)
         )
-        self.fc1 = nn.Linear(in_features=64*8, out_features=128)
+        self.fc1 = nn.Linear(in_features=64*8, out_features=24*7*2)
         self.drop = nn.Dropout2d(0.25)
-        self.fc2 = nn.Linear(in_features=128, out_features=32)
-        self.fc3 = nn.Linear(in_features=32, out_features=24)
+        self.fc2 = nn.Linear(in_features=24*7*2, out_features=24*7)
+        self.fc3 = nn.Linear(in_features=24*7, out_features=24*7)
  
     def forward(self, x):
         out = self.layer1(x)
@@ -208,6 +208,37 @@ xmin, xmax = 100.0, -100.0
 vnorm = 1000.0
 #we want to predict traffic per hour for a day  based on the traffic of 
 #the previous 3 months (per hour each day)
+minlen = 24*30*2
+# if <8 then layer1 outputs L=7/2=3 which fails because layer2 needs L>=4
+#testing on an example
+si2X, si2Y = {}, {}
+dsi2X, dsi2Y = {}, {}
+#for s,i in dsi2c.keys():
+#    seq = dsi2c[(s,i)]
+seq=Get_Time_Series(names[0], directions[0])[10000:]
+
+xlist, ylist = [], []
+for m in range(minlen, len(seq)-24*7*2):
+    #the growing window has initial size minlen
+    #m moves  by 1 hour
+    if m==minlen:
+        xx = [seq[z]/vnorm for z in range(m)]
+    else:
+        m=m+24*7-1
+        xx = [seq[z]/vnorm for z in range(m)] #add the last day to our growing window
+    if max(xx)>xmax: xmax=max(xx)
+    if min(xx)<xmin: xmin=min(xx)
+    xlist.append(torch.tensor(xx,dtype=torch.float32))
+    yy = [seq[m+k]/vnorm for k in range(24*7)]
+    ylist.append(torch.tensor(yy,dtype=torch.float32))
+si2X= xlist
+si2Y= ylist
+if True: # build evaluation dataset
+    xx = [seq[z]/vnorm for z in range(len(seq)-24*7-1)]
+    dsi2X = [torch.tensor(xx,dtype=torch.float32)]
+    yy = [seq[len(seq)-1-24*7+i]/vnorm for i in range(24*7)]
+    dsi2Y= [torch.tensor(yy,dtype=torch.float32)]
+"""
 minlen = 24*30*2
 # if <8 then layer1 outputs L=7/2=3 which fails because layer2 needs L>=4
 #testing on an example
@@ -238,10 +269,71 @@ if True: # build evaluation dataset
     dsi2X = [torch.tensor(xx,dtype=torch.float32)]
     yy = [seq[len(seq)-1-24+i]/vnorm for i in range(24)]
     dsi2Y= [torch.tensor(yy,dtype=torch.float32)]
-
+"""
 print("ntrain %d %f %f" % (len(si2X),xmin,xmax))
 #len(xlist[0]) 720 (24*30 heures dans 1 mois)
 #len(ylist[0])  24 (24 heures )
+mod = TimeCNN()
+loss = torch.nn.MSELoss()
+opt = torch.optim.Adam(mod.parameters(),lr=0.01)
+
+xlist = si2X
+ylist = si2Y
+idxtr = list(range(len(xlist)))
+for ep in range(10):
+    shuffle(idxtr)
+    lotot=0.
+    mod.train()
+    for j in idxtr:
+        opt.zero_grad()
+        haty = mod(xlist[j].view(1,1,-1))
+        # print("pred %f" % (haty.item()*vnorm))
+        lo = loss(haty,ylist[j].view(1,-1))
+        lotot += lo.item()
+        lo.backward()
+        opt.step()
+
+    # the MSE here is computed on a single sample: so it's highly variable !
+    # to make sense of it, you should average it over at least 1000 (s,i) points
+    mod.eval()
+    haty = mod(dsi2X[0].view(1,1,-1))
+    lo = loss(haty,dsi2Y[0].view(1,-1))
+    print("epoch %d loss %1.9f testMSE %1.9f" % (ep, lotot, lo.item()))
+
+
+## Sliding window
+minlen = 24*30*2
+# if <8 then layer1 outputs L=7/2=3 which fails because layer2 needs L>=4
+#testing on an example
+si2X, si2Y = {}, {}
+dsi2X, dsi2Y = {}, {}
+#for s,i in dsi2c.keys():
+#    seq = dsi2c[(s,i)]
+seq=Get_Time_Series(names[0], directions[0])
+
+#building the sliding window
+n_steps=24*30*2 #2 months
+horizon=24*7 #1 week
+xlist, ylist = [], []
+for i in range(len(seq)//horizon):
+    end= i*horizon + n_steps
+    if end > len(seq)-1:
+        break
+    xx = seq[i*horizon:end]/vnorm
+    xlist.append(torch.tensor(xx,dtype=torch.float32))
+    yy = seq[end:(end+horizon)]/vnorm
+    ylist.append(torch.tensor(yy,dtype=torch.float32))
+si2X= xlist
+si2Y= ylist
+if True: # build evaluation dataset
+    xx = seq[:len(seq)-24*7]/vnorm
+    dsi2X = [torch.tensor(xx,dtype=torch.float32)]
+    yy = seq[len(seq)-24*7:]/vnorm 
+    dsi2Y= [torch.tensor(yy,dtype=torch.float32)]
+
+print("ntrain %d %f %f" % (len(si2X),xmin,xmax))
+#len(xlist[0]) 720 (24*30 heures dans 1 mois)
+#len(ylist[0])  24 (24 heures)
 mod = TimeCNN()
 loss = torch.nn.MSELoss()
 opt = torch.optim.Adam(mod.parameters(),lr=0.01)
