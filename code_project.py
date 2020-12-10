@@ -11,7 +11,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 from sklearn.preprocessing import StandardScaler
 import os
-
+from random import shuffle
 
 import torch
 import torch.nn as nn
@@ -20,7 +20,7 @@ from torch.autograd import Variable
 import torchvision
 import torchvision.transforms as transforms
 from torch.utils.data import Dataset, DataLoader
-
+"""
 data = pd.read_csv('C:\\Users\\33758\\Desktop\\3A Mines\\Machine learning\\Radar Traffic\\Radar_Traffic_Counts.csv')
 
 #Visualization of the data
@@ -91,10 +91,13 @@ data19_M1.shape[0] #135593
 data19_M1['Day of Week'].unique() #[3, 4, 2, 5, 0, 1, 6]
 #volume per month fo the year 2017
 plt.plot(data19_M1['Day of Week'],data19_M1['Volume'])
+"""
 
 ###########################################
 ##DATA PREPROCESSING
 ###########################################
+
+
 data = pd.read_csv('C:\\Users\\33758\\Desktop\\3A Mines\\Machine learning\\Radar Traffic\\Radar_Traffic_Counts.csv')
 
 ##The idea behind the following transformations is to have a Time Series 
@@ -150,9 +153,6 @@ new_data = count_u[count_u['count'] > 100] #6 couples were deleted, 34 are left
 #for each location and direction we will have a time series
 #where the volume is a function of "Date-Hour"
 
-loc=' BURNET RD / PALM WAY (IBM DRIVEWAY)'
-direct='NB'
-Get_Time_Series(loc,direct)
 
 def Get_Time_Series(location,direction):
     #location and direction are strings
@@ -160,7 +160,12 @@ def Get_Time_Series(location,direction):
     #dates=extract['Date']
     volume=extract['Volume'].to_numpy()
     return volume
-#list of location_names
+#test
+#loc=' BURNET RD / PALM WAY (IBM DRIVEWAY)'
+#direct='NB'
+#Get_Time_Series(loc,direct)
+    
+##list of location_names
 names=data2['location_name'].unique().tolist()
 #list of directions 
 directions=['NB','SB','EB','WB','None']
@@ -187,7 +192,7 @@ class TimeCNN(nn.Module):
         self.fc1 = nn.Linear(in_features=64*8, out_features=128)
         self.drop = nn.Dropout2d(0.25)
         self.fc2 = nn.Linear(in_features=128, out_features=32)
-        self.fc3 = nn.Linear(in_features=32, out_features=24*7)
+        self.fc3 = nn.Linear(in_features=32, out_features=24)
  
     def forward(self, x):
         out = self.layer1(x)
@@ -201,7 +206,9 @@ class TimeCNN(nn.Module):
     
 xmin, xmax = 100.0, -100.0
 vnorm = 1000.0
-minlen = 24*3*30
+#we want to predict traffic per hour for a day  based on the traffic of 
+#the previous month (per hour each day)
+minlen = 24*30
 # if <8 then layer1 outputs L=7/2=3 which fails because layer2 needs L>=4
 #testing on an example
 si2X, si2Y = {}, {}
@@ -209,31 +216,31 @@ dsi2X, dsi2Y = {}, {}
 #for s,i in dsi2c.keys():
 #    seq = dsi2c[(s,i)]
 seq=Get_Time_Series(names[0], directions[0])
-if len(seq)<=minlen: continue
+
 xlist, ylist = [], []
-for m in range(minlen, len(seq)-24*7):
-    xx = [seq[z][1]/vnorm for z in range(m)]
+for m in range(minlen, len(seq)-24):
+    xx = [seq[z]/vnorm for z in range(m)]
     if max(xx)>xmax: xmax=max(xx)
     if min(xx)<xmin: xmin=min(xx)
     xlist.append(torch.tensor(xx,dtype=torch.float32))
-    yy = [seq[m+k][1]/vnorm for k in range(24*7)]
+    yy = [seq[m+k]/vnorm for k in range(24)]
     ylist.append(torch.tensor(yy,dtype=torch.float32))
 si2X= xlist
 si2Y= ylist
 if True: # build evaluation dataset
-    xx = [seq[z][1]/vnorm for z in range(len(seq)-24*7)]
+    xx = [seq[z]/vnorm for z in range(len(seq)-24)]
     dsi2X = [torch.tensor(xx,dtype=torch.float32)]
-    yy = [seq[len(seq)-24*7+i][1]/vnorm for i in range(24*7)]
+    yy = [seq[len(seq)-24+i]/vnorm for i in range(24)]
     dsi2Y= [torch.tensor(yy,dtype=torch.float32)]
 
 print("ntrain %d %f %f" % (len(si2X),xmin,xmax))
-
+#len(xlist[0]) 720 (24*30 heures dans 1 mois)
+#len(ylist[0])  24 (24 heures )
 mod = TimeCNN()
 loss = torch.nn.MSELoss()
 opt = torch.optim.Adam(mod.parameters(),lr=0.01)
 
 xlist = si2X
-if len(xlist)<10: continue
 ylist = si2Y
 idxtr = list(range(len(xlist)))
 for ep in range(5):
