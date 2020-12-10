@@ -18,7 +18,7 @@ We have 4603861 and 12 columns. The columns are the following:
 We have data over the years: 2017, 2018, 2019, days of week vary from 0 to 6, and hours from 0 to 23.
 
 ## Objective
-Our objective is to predict the traffic volume per hour for each day in January 2020. To do that we will build a model than given a location and direction predicts this traffic volume. The couple (location, direction) should be among the couples used for the training. And the idea is to transform the data into a Time Series for each (location, direction). In the next section we will explain in detail the data preprocessing.
+Our objective is to predict the traffic volume per hour for each day in January 2020. To do that we will build a model than given a location and direction predicts this traffic volume. The couple (location, direction) should be among the couples in our dataset. And the idea is to transform the data into a Time Series for each (location, direction). In the next section we will explain in detail the data preprocessing.
 
 ## Data preprocessing
 In this section we will present the preprocessing phase. First, we are going to drop the following columns for the reasons below: <br>
@@ -29,7 +29,10 @@ Next for a given day, location and direction, we will sum the traffic volume ove
 The figure below shows an extract of the data we get after these transformations<br>
 <img src="https://user-images.githubusercontent.com/44069155/101657104-c955df00-3a43-11eb-97e8-a6adda17d239.png" width="50%"/>
 <br>
-## References
+So for each couple (location, direction) we will have a Time Series of traffic volume per hour.
+Next we want to make our Time Series ready for a supervised Machine Learning algorithm, and create multiple samples for the training phase of our model. We will first use the growing window technique, then we will use the sliding window technique which resulted in a better performance in our case. For the model we will use Convolutionnal Neural Networks who proved to be very efficient for such case REFERENCE??. We will do numerous experimentations for the prediction by trying different time lags (prediction for a week, a month..) which can be useful in case of objectives that are different than the one we chose. <br>
+
+## References 
 <a id="1">[1]</a> 
 https://members.loria.fr/CCerisara/#courses/machine_learning/ <br>
 <a id="2">[2]</a> 
