@@ -207,19 +207,25 @@ class TimeCNN(nn.Module):
 xmin, xmax = 100.0, -100.0
 vnorm = 1000.0
 #we want to predict traffic per hour for a day  based on the traffic of 
-#the previous month (per hour each day)
-minlen = 24*30
+#the previous 3 months (per hour each day)
+minlen = 24*30*2
 # if <8 then layer1 outputs L=7/2=3 which fails because layer2 needs L>=4
 #testing on an example
 si2X, si2Y = {}, {}
 dsi2X, dsi2Y = {}, {}
 #for s,i in dsi2c.keys():
 #    seq = dsi2c[(s,i)]
-seq=Get_Time_Series(names[0], directions[0])
+seq=Get_Time_Series(names[0], directions[0])[10000:]
 
 xlist, ylist = [], []
-for m in range(minlen, len(seq)-24):
-    xx = [seq[z]/vnorm for z in range(m)]
+for m in range(minlen, len(seq)-24*2):
+    #the growing window has initial size minlen
+    #m moves  by 1 hour
+    if m==minlen:
+        xx = [seq[z]/vnorm for z in range(m)]
+    else:
+        m=m+23
+        xx = [seq[z]/vnorm for z in range(m)] #add the last day to our growing window
     if max(xx)>xmax: xmax=max(xx)
     if min(xx)<xmin: xmin=min(xx)
     xlist.append(torch.tensor(xx,dtype=torch.float32))
@@ -228,9 +234,9 @@ for m in range(minlen, len(seq)-24):
 si2X= xlist
 si2Y= ylist
 if True: # build evaluation dataset
-    xx = [seq[z]/vnorm for z in range(len(seq)-24)]
+    xx = [seq[z]/vnorm for z in range(len(seq)-24-1)]
     dsi2X = [torch.tensor(xx,dtype=torch.float32)]
-    yy = [seq[len(seq)-24+i]/vnorm for i in range(24)]
+    yy = [seq[len(seq)-1-24+i]/vnorm for i in range(24)]
     dsi2Y= [torch.tensor(yy,dtype=torch.float32)]
 
 print("ntrain %d %f %f" % (len(si2X),xmin,xmax))
@@ -243,7 +249,7 @@ opt = torch.optim.Adam(mod.parameters(),lr=0.01)
 xlist = si2X
 ylist = si2Y
 idxtr = list(range(len(xlist)))
-for ep in range(5):
+for ep in range(10):
     shuffle(idxtr)
     lotot=0.
     mod.train()
@@ -259,6 +265,6 @@ for ep in range(5):
     # the MSE here is computed on a single sample: so it's highly variable !
     # to make sense of it, you should average it over at least 1000 (s,i) points
     mod.eval()
-    haty = mod(dsi2X[(s,i)][0].view(1,1,-1))
-    lo = loss(haty,dsi2Y[(s,i)][0].view(1,-1))
+    haty = mod(dsi2X[0].view(1,1,-1))
+    lo = loss(haty,dsi2Y[0].view(1,-1))
     print("epoch %d loss %1.9f testMSE %1.9f" % (ep, lotot, lo.item()))
