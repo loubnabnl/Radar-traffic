@@ -300,12 +300,14 @@ for ep in range(10):
     lo = loss(haty,dsi2Y[0].view(1,-1))
     print("epoch %d loss %1.9f testMSE %1.9f" % (ep, lotot, lo.item()))
 
+#growing window takes time and has a high loss: 500
+#low testMSE 0.08
 ###########################################
 ## SLIDING WINDOW
 ###########################################
     
 #goal: Predict one week traffic(for each day per hour) based on the past 2 months
-
+#1 week prediction
 ##convolutional neural network for sliding window
 class TimeCNN(nn.Module):
     def __init__(self):
@@ -320,10 +322,10 @@ class TimeCNN(nn.Module):
             nn.ReLU(),
             nn.AdaptiveMaxPool1d(8)
         )
-        self.fc1 = nn.Linear(in_features=64*8, out_features=24*7*2)
+        self.fc1 = nn.Linear(in_features=64*8, out_features=250)
         self.drop = nn.Dropout2d(0.25)
-        self.fc2 = nn.Linear(in_features=24*7*2, out_features=24*7)
-        self.fc3 = nn.Linear(in_features=24*7, out_features=24*7)
+        self.fc2 = nn.Linear(in_features=250, out_features=180)
+        self.fc3 = nn.Linear(in_features=180, out_features=24*7)
  
     def forward(self, x):
         out = self.layer1(x)
@@ -344,7 +346,7 @@ train_seq=seq[:2*len(seq)//3] #sequence for the training set
 eval_seq=seq[2*len(seq)//3:]    #sequence for the evaluation set
 
 #building the sliding window
-n_steps=24*30*2 #2 months
+n_steps=24*30*3 #2 months
 horizon=24*7 #1 week
 xlist, ylist = [], []
 for i in range(len(train_seq)//horizon):
@@ -394,3 +396,122 @@ for ep in range(10):
     haty = mod(dsi2X[0].view(1,1,-1))
     lo = loss(haty,dsi2Y[0].view(1,-1))
     print("epoch %d loss %1.9f testMSE %1.9f" % (ep, lotot, lo.item()))
+##
+    """
+    n_steps=24*30*2 #2 months
+horizon=24*7 #1 week
+epoch 0 loss 14.161140896 testMSE 0.157792360
+epoch 1 loss 9.510878451 testMSE 0.208194226
+epoch 2 loss 8.804978393 testMSE 0.202336833
+epoch 3 loss 8.836057104 testMSE 0.204323024
+epoch 4 loss 8.733711205 testMSE 0.188758969
+epoch 5 loss 8.636740312 testMSE 0.151033983
+epoch 6 loss 9.538993686 testMSE 0.156481609
+epoch 7 loss 8.773637764 testMSE 0.240398064
+epoch 8 loss 8.925511762 testMSE 0.165904075
+epoch 9 loss 8.683578223 testMSE 0.162461430
+    """
+    #precdiction of 1 month based on 3 months
+##convolutional neural network for sliding window
+class TimeCNN(nn.Module):
+    def __init__(self):
+        super(TimeCNN, self).__init__()
+        self.layer1 = nn.Sequential(
+            nn.Conv1d(in_channels=1, out_channels=32, kernel_size=3, padding=1),
+            nn.ReLU(),
+            nn.MaxPool1d(kernel_size=2, stride=2)
+        )
+        self.layer2 = nn.Sequential(
+            nn.Conv1d(in_channels=32, out_channels=64, kernel_size=3),
+            nn.ReLU(),
+            nn.AdaptiveMaxPool1d(8)
+        )
+        self.fc1 = nn.Linear(in_features=64*8, out_features=24*30)
+        self.drop = nn.Dropout2d(0.25)
+        self.fc2 = nn.Linear(in_features=24*30, out_features=24*30)
+        self.fc3 = nn.Linear(in_features=24*30, out_features=24*30)
+ 
+    def forward(self, x):
+        out = self.layer1(x)
+        out = self.layer2(out)
+        out = out.view(out.size(0), -1)
+        out = self.fc1(out)
+        out = self.drop(out)
+        out = self.fc2(out)
+        out = self.fc3(out)
+        return out
+
+xmin, xmax = 100.0, -100.0
+vnorm = 1000.0
+si2X, si2Y = {}, {}
+dsi2X, dsi2Y = {}, {}
+#for s,i in dsi2c.keys():
+#    seq = dsi2c[(s,i)]
+seq=Get_Time_Series(names[0], directions[0])
+train_seq=seq[:2*len(seq)//3] #sequence for the training set
+eval_seq=seq[2*len(seq)//3:]    #sequence for the evaluation set
+
+#building the sliding window
+n_steps=24*30*3 #3 months
+horizon=24*30 #1 month
+xlist, ylist = [], []
+for i in range(len(train_seq)//horizon):
+    end= i*horizon + n_steps
+    if end+horizon > len(train_seq)-1:
+        break
+    xx = train_seq[i*horizon:end]/vnorm
+    if max(xx)>xmax: xmax=max(xx)
+    if min(xx)<xmin: xmin=min(xx)
+    xlist.append(torch.tensor(xx,dtype=torch.float32))
+    yy = train_seq[end:(end+horizon)]/vnorm
+    ylist.append(torch.tensor(yy,dtype=torch.float32))
+si2X= xlist #len=11 samples
+si2Y= ylist
+#build evaluation dataset
+xeval = eval_seq[:len(eval_seq)-24*30]/vnorm
+dsi2X = [torch.tensor(xeval,dtype=torch.float32)]
+yeval = eval_seq[len(eval_seq)-24*30:]/vnorm 
+dsi2Y= [torch.tensor(yeval,dtype=torch.float32)]
+
+print("ntrain %d %f %f" % (len(si2X),xmin,xmax))
+#len(xlist[0]) 720 (24*30 heures dans 1 mois)
+#len(ylist[0])  24 (24 heures)
+mod = TimeCNN()
+loss = torch.nn.MSELoss()
+opt = torch.optim.Adam(mod.parameters(),lr=0.01)
+
+xlist = si2X
+ylist = si2Y
+idxtr = list(range(len(xlist)))
+for ep in range(10):
+    shuffle(idxtr)
+    lotot=0.
+    mod.train()
+    for j in idxtr:
+        opt.zero_grad()
+        haty = mod(xlist[j].view(1,1,-1))
+        # print("pred %f" % (haty.item()*vnorm))
+        lo = loss(haty,ylist[j].view(1,-1))
+        lotot += lo.item()
+        lo.backward()
+        opt.step()
+
+    # the MSE here is computed on a single sample: so it's highly variable !
+    # to make sense of it, you should average it over at least 1000 (s,i) points
+    mod.eval()
+    haty = mod(dsi2X[0].view(1,1,-1))
+    lo = loss(haty,dsi2Y[0].view(1,-1))
+    print("epoch %d loss %1.9f testMSE %1.9f" % (ep, lotot, lo.item()))
+##
+    """
+    epoch 0 loss 79.731029838 testMSE 0.379091054
+epoch 1 loss 8.150669813 testMSE 0.740474164
+epoch 2 loss 6.263058335 testMSE 0.474276483
+epoch 3 loss 17.157752454 testMSE 0.701141298
+epoch 4 loss 4.761044279 testMSE 0.334535301
+epoch 5 loss 5.051031470 testMSE 0.275904387
+epoch 6 loss 4.402069554 testMSE 0.605282307
+epoch 7 loss 3.920856677 testMSE 0.300058901
+epoch 8 loss 3.153463647 testMSE 0.177448362
+epoch 9 loss 2.662052929 testMSE 0.352872044
+    """
