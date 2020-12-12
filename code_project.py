@@ -162,17 +162,27 @@ def Get_Time_Series(location,direction):
     #dates=extract['Date']
     volume=extract['Volume'].to_numpy()
     return volume
-#test
-#loc=' BURNET RD / PALM WAY (IBM DRIVEWAY)'
-#direct='NB'
-#Get_Time_Series(loc,direct)
+
     
 ##list of location_names
 names=data2['location_name'].unique().tolist()
 #list of directions 
 directions=['NB','SB','EB','WB','None']
 
-
+###################################################################
+##DICTIONNARY of the locations and directions as key (couple) and the TRAFFIC VOLUME as a value
+###################################################################   
+data_dict={}
+couples=new_data[['location_name','Direction']]
+couples=[tuple(couples.iloc[i]) for i in range(tuples.shape[0])]
+volume=[]
+for couple in couples:
+    location,direction=couple
+    volume.append(Get_Time_Series(location,direction))
+for i in range(len(volume)):
+    key=couples[i] #(location,direction)
+    data_dict[key]=volume[i]  
+    
 ###########################################
 ## the teacher's code
 ###########################################
@@ -384,37 +394,49 @@ def train_test_set(xlist,ylist):
     Y_test = ylist[data_size-test_size:]
     return(X_train,Y_train,X_test,Y_test)
 
-
-print("ntrain %d %f %f" % (len(si2X),xmin,xmax))
-#len(xlist[0]) 720 (24*30 heures dans 1 mois)
-#len(ylist[0])  24 (24 heures)
 mod = TimeCNN()
 loss = torch.nn.MSELoss()
 opt = torch.optim.Adam(mod.parameters(),lr=0.01)
+def model_traffic(model,seq,num_ep=10):
+    #inputs are the model, the Time Series sequence and the number of epochs
+    #building the model
+    xlist,ylist = split_ts(seq,horizon,n_steps)
+    X_train,Y_train,X_test,Y_test=train_test_set(xlist,ylist)
+    idxtr = list(range(len(X_train)))
+    for ep in range(10):
+        shuffle(idxtr)
+        ep_loss=0.
+        mod.train()
+        for j in idxtr:
+            opt.zero_grad()
+            #forward pass
+            haty = mod(X_train[j].view(1,1,-1))
+            # print("pred %f" % (haty.item()*vnorm))
+            lo = loss(haty,Y_train[j].view(1,-1))
+            #backward pass
+            lo.backward()
+            #optimization
+            opt.step()
+            ep_loss += lo.item()
+        #model evaluation
+        mod.eval()
+        haty = mod(X_test.view(1,1,-1))
+        test_loss= loss(haty,Y_test.view(1,-1))
+        print("epoch %d training loss %1.9f test loss %1.9f" % (ep, ep_loss, test_loss.item()))
+    #selected model (last epoch)
+    test_loss=0
+    for i in range(len(X_test)):    
+        haty = mod(X_test[i].view(1,1,-1))
+        test_loss+= loss(haty,Y_test[i].view(1,-1))
+    return ep_loss,test_loss
 
-xlist = si2X
-ylist = si2Y
-idxtr = list(range(len(xlist)))
-for ep in range(10):
-    shuffle(idxtr)
-    lotot=0.
-    mod.train()
-    for j in idxtr:
-        opt.zero_grad()
-        haty = mod(xlist[j].view(1,1,-1))
-        # print("pred %f" % (haty.item()*vnorm))
-        lo = loss(haty,ylist[j].view(1,-1))
-        lotot += lo.item()
-        lo.backward()
-        opt.step()
 
-    # the MSE here is computed on a single sample: so it's highly variable !
-    # to make sense of it, you should average it over at least 1000 (s,i) points
-    mod.eval()
-    haty = mod(dsi2X[0].view(1,1,-1))
-    lo = loss(haty,dsi2Y[0].view(1,-1))
-    print("epoch %d loss %1.9f testMSE %1.9f" % (ep, lotot, lo.item()))
-##
+###################################################################
+# TRAINING AND EVALUATION OF THE MODEL FOR EACH (LOCATION,DIRECTION)
+###################################################################
+results = pd.DataFrame( columns = ["couple", "training_loss", "test_loss"])
+def Final_model
+
     """
     n_steps=24*30*2 #2 months
 horizon=24*7 #1 week
