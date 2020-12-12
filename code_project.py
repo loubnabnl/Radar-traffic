@@ -342,30 +342,45 @@ dsi2X, dsi2Y = {}, {}
 #for s,i in dsi2c.keys():
 #    seq = dsi2c[(s,i)]
 seq=Get_Time_Series(names[0], directions[0])
-train_seq=seq[:2*len(seq)//3] #sequence for the training set
-eval_seq=seq[2*len(seq)//3:]    #sequence for the evaluation set
+#train_seq=seq[:2*len(seq)//3] #sequence for the training set
+#eval_seq=seq[2*len(seq)//3:]    #sequence for the evaluation set
 
 #building the sliding window
 n_steps=24*30*3 #2 months
 horizon=24*7 #1 week
-xlist, ylist = [], []
-for i in range(len(train_seq)//horizon):
-    end= i*horizon + n_steps
-    if end+horizon > len(train_seq)-1:
-        break
-    xx = train_seq[i*horizon:end]/vnorm
-    if max(xx)>xmax: xmax=max(xx)
-    if min(xx)<xmin: xmin=min(xx)
-    xlist.append(torch.tensor(xx,dtype=torch.float32))
-    yy = train_seq[end:(end+horizon)]/vnorm
-    ylist.append(torch.tensor(yy,dtype=torch.float32))
-si2X= xlist
-si2Y= ylist
-#build evaluation dataset
-xeval = eval_seq[:len(eval_seq)-24*7]/vnorm
-dsi2X = [torch.tensor(xeval,dtype=torch.float32)]
-yeval = eval_seq[len(eval_seq)-24*7:]/vnorm 
-dsi2Y= [torch.tensor(yeval,dtype=torch.float32)]
+def split_ts(seq,horizon,n_steps):
+    """ this function take in arguments a traffic Time Series for the couple (l,d)
+    and applies a sliding window of length n_steps to generates samples having this 
+    length and their labels (to be predicted) whose size is horizon
+    """
+    xlist, ylist = [], []
+    for i in range(len(seq)//horizon):
+        end= i*horizon + n_steps
+        if end+horizon > len(seq)-1:
+            break
+        xx = seq[i*horizon:end]/vnorm
+        if max(xx)>xmax: xmax=max(xx)
+        if min(xx)<xmin: xmin=min(xx)
+        xlist.append(torch.tensor(xx,dtype=torch.float32))
+        yy = seq[end:(end+horizon)]/vnorm
+        ylist.append(torch.tensor(yy,dtype=torch.float32))
+        print("number of samples %d and sample size %d (3 months)" %(len(xlist),len(xlist[0])))
+    return(xlist,ylist)
+
+def train_test_set(xlist,ylist):
+    """ this functions splits the samples and labels datasets xlist and ylist
+    (given by the function split_ts) into a training set and a test set
+    """
+    data_size=len(xlist)
+    test_size=int(data_size*0.2) #20% of the dataset
+    #training set
+    X_train  = xlist[:data_size-test_size]
+    Y_train = ylist[:data_size-test_size]
+    #test set
+    X_test = xlist[data_size-test_size:]
+    Y_test = ylist[data_size-test_size:]
+    return(X_train,Y_train,X_test,Y_test)
+
 
 print("ntrain %d %f %f" % (len(si2X),xmin,xmax))
 #len(xlist[0]) 720 (24*30 heures dans 1 mois)
@@ -450,9 +465,9 @@ dsi2X, dsi2Y = {}, {}
 seq=Get_Time_Series(names[0], directions[0])
 train_seq=seq[:2*len(seq)//3] #sequence for the training set
 eval_seq=seq[2*len(seq)//3:]    #sequence for the evaluation set
-
+train_seq=seq
 #building the sliding window
-n_steps=24*30*3 #3 months
+n_steps=24*30*2 #3 months
 horizon=24*30 #1 month
 xlist, ylist = [], []
 for i in range(len(train_seq)//horizon):
@@ -485,15 +500,18 @@ ylist = si2Y
 idxtr = list(range(len(xlist)))
 for ep in range(10):
     shuffle(idxtr)
-    lotot=0.
+    lotot=0
     mod.train()
     for j in idxtr:
         opt.zero_grad()
+        #forward
         haty = mod(xlist[j].view(1,1,-1))
         # print("pred %f" % (haty.item()*vnorm))
         lo = loss(haty,ylist[j].view(1,-1))
         lotot += lo.item()
+        #backward
         lo.backward()
+        #optimize
         opt.step()
 
     # the MSE here is computed on a single sample: so it's highly variable !
