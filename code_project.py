@@ -9,7 +9,7 @@ Created on Sat Nov 21 12:12:09 2020
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
-from sklearn.preprocessing import StandardScaler
+from sklearn.model_selection import train_test_split
 import os
 from random import shuffle
 
@@ -130,6 +130,7 @@ for i in range(len(volume)):
 #goal: Predict one week traffic(for each day per hour) based on the past 2 months
 #1 week prediction
 ##convolutional neural network for sliding window
+    """
 class TimeCNN(nn.Module):
     def __init__(self):
         super(TimeCNN, self).__init__()
@@ -143,11 +144,42 @@ class TimeCNN(nn.Module):
             nn.ReLU(),
             nn.AdaptiveMaxPool1d(8)
         )
-        self.fc1 = nn.Linear(in_features=64*8, out_features=120)
-        self.drop = nn.Dropout2d(0.25)
-        #self.fc2 = nn.Linear(in_features=250, out_features=180)
-        self.fc3 = nn.Linear(in_features=120, out_features=24*7)
- 
+
+        self.fc1 = nn.Linear(in_features=64*8, out_features=130)
+        self.drop1 = nn.Dropout2d(0.1)
+        self.fc2 = nn.Linear(in_features=130, out_features=200)
+        self.drop2 = nn.Dropout2d(0.1)
+        self.fc3 = nn.Linear(in_features=200, out_features=24*7)
+        
+    def forward(self, x):
+        out = self.layer1(x)
+        out = self.layer2(out)
+        out = out.view(out.size(0), -1)
+        out = self.fc1(out)
+        out = self.drop1(out)
+        out = self.fc2(out)
+        out = self.drop2(out)
+        out = self.fc3(out)
+        return out
+"""
+class TimeCNN(nn.Module):
+    def __init__(self):
+        super(TimeCNN, self).__init__()
+        self.layer1 = nn.Sequential(
+            nn.Conv1d(in_channels=1, out_channels=32, kernel_size=3, padding=1),
+            nn.ReLU(),
+            nn.MaxPool1d(kernel_size=2, stride=2)
+        )
+        self.layer2 = nn.Sequential(
+            nn.Conv1d(in_channels=32, out_channels=64, kernel_size=3),
+            nn.ReLU(),
+            nn.AdaptiveMaxPool1d(8)
+        )
+        self.fc1 = nn.Linear(in_features=64*8, out_features=130)
+        self.drop = nn.Dropout2d(0.3)
+        #self.fc2 = nn.Linear(in_features=128, out_features=32)
+        self.fc3 = nn.Linear(in_features=130, out_features=24*7)
+        
     def forward(self, x):
         out = self.layer1(x)
         out = self.layer2(out)
@@ -157,7 +189,6 @@ class TimeCNN(nn.Module):
         #out = self.fc2(out)
         out = self.fc3(out)
         return out
-
 #seq=Get_Time_Series(names[0], directions[0])
 #building the sliding window
 #n_steps=24*30*2 #2 months
@@ -188,6 +219,7 @@ def train_test_set(xlist,ylist):
     """ this functions splits the samples and labels datasets xlist and ylist
     (given by the function split_ts) into a training set and a test set
     """
+    """
     data_size=len(xlist)
     test_size=int(data_size*0.2) #20% of the dataset
     #training set
@@ -196,8 +228,9 @@ def train_test_set(xlist,ylist):
     #test set
     X_test = xlist[data_size-test_size:]
     Y_test = ylist[data_size-test_size:]
+    """
+    X_train, X_test, Y_train, Y_test =train_test_split(xlist,ylist,test_size=0.2,random_state=1)
     return(X_train,Y_train,X_test,Y_test)
-
 
 def model_traffic(mod,seq,num_ep=60,horizon=24*7,n_steps=24*30*2):
     #inputs are the model mod, the Time Series sequence and the number of epochs
@@ -245,7 +278,7 @@ def model_traffic(mod,seq,num_ep=60,horizon=24*7,n_steps=24*30*2):
 results = pd.DataFrame( columns = ["couple", "training_loss", "test_loss"])
 num_ep=500
 horizon=24*7
-n_steps=24*30*2
+n_steps=24*28*3
 for l,d in data_dict.keys():
     seq=data_dict[(l,d)] #volume sequence for (l,d) location, direction
     xlist,ylist = split_ts(seq,horizon,n_steps)
