@@ -112,7 +112,7 @@ def Get_Time_Series(location,direction):
 ###################################################################   
 data_dict={}
 couples=new_data[['location_name','Direction']]
-couples=[tuple(couples.iloc[i]) for i in range(tuples.shape[0])]
+couples=[tuple(couples.iloc[i]) for i in range(couples.shape[0])]
 volume=[]
 for couple in couples:
     location,direction=couple
@@ -143,10 +143,10 @@ class TimeCNN(nn.Module):
             nn.ReLU(),
             nn.AdaptiveMaxPool1d(8)
         )
-        self.fc1 = nn.Linear(in_features=64*8, out_features=250)
+        self.fc1 = nn.Linear(in_features=64*8, out_features=120)
         self.drop = nn.Dropout2d(0.25)
-        self.fc2 = nn.Linear(in_features=250, out_features=180)
-        self.fc3 = nn.Linear(in_features=180, out_features=24*7)
+        #self.fc2 = nn.Linear(in_features=250, out_features=180)
+        self.fc3 = nn.Linear(in_features=120, out_features=24*7)
  
     def forward(self, x):
         out = self.layer1(x)
@@ -154,12 +154,11 @@ class TimeCNN(nn.Module):
         out = out.view(out.size(0), -1)
         out = self.fc1(out)
         out = self.drop(out)
-        out = self.fc2(out)
+        #out = self.fc2(out)
         out = self.fc3(out)
         return out
 
-seq=Get_Time_Series(names[0], directions[0])
-np.mean(seq)
+#seq=Get_Time_Series(names[0], directions[0])
 #building the sliding window
 #n_steps=24*30*2 #2 months
 #horizon=24*7 #1 week
@@ -208,7 +207,7 @@ def model_traffic(mod,seq,num_ep=60,horizon=24*7,n_steps=24*30*2):
     idxtr = list(range(len(X_train)))
     #loss and optimizer
     loss = torch.nn.MSELoss()
-    opt = torch.optim.Adam(mod.parameters(),lr=0.001)
+    opt = torch.optim.Adam(mod.parameters(),lr=0.0005)
     for ep in range(num_ep):
         shuffle(idxtr)
         ep_loss=0.
@@ -230,7 +229,7 @@ def model_traffic(mod,seq,num_ep=60,horizon=24*7,n_steps=24*30*2):
         for i in range(len(X_test)):    
             haty = mod(X_test[i].view(1,1,-1))
             test_loss+= loss(haty,Y_test[i].view(1,-1))
-        if ep%20==0:
+        if ep%50==0:
             print("epoch %d training loss %1.9f test loss %1.9f" % (ep, ep_loss, test_loss.item()))
     #selected model (last epoch)
     test_loss=0
@@ -244,11 +243,11 @@ def model_traffic(mod,seq,num_ep=60,horizon=24*7,n_steps=24*30*2):
 # TRAINING AND EVALUATION OF THE MODEL FOR EACH (LOCATION,DIRECTION)
 ###################################################################
 results = pd.DataFrame( columns = ["couple", "training_loss", "test_loss"])
-num_ep=200
+num_ep=500
 horizon=24*7
 n_steps=24*30*2
 for l,d in data_dict.keys():
-    datac=data_dict[(l,d)] #volume sequence for (l,d) location, direction
+    seq=data_dict[(l,d)] #volume sequence for (l,d) location, direction
     xlist,ylist = split_ts(seq,horizon,n_steps)
     print("couple:",(l,d))
     print("number of samples in the dataset:", len(xlist))
