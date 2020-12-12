@@ -69,7 +69,20 @@ data2=pd.DataFrame(data=d)
 ###########################################
 ##count number of couples (location, direction)
 ###########################################
-
+##list of location_names
+names=data2['location_name'].unique().tolist()
+#list of directions 
+directions=['NB','SB','EB','WB','None']
+"""
+count_occ = pd.DataFrame( columns = ["location_name", "Direction", "count"])
+for loc in names:
+    for direct in directions:
+        extract=data2.loc[data2.location_name==loc][data2.Direction==direct]
+        count_occ.loc[len(count_occ)]=[loc,direct,extract.shape[0]]
+ """
+    
+        
+date = data2.groupby(['location_name','Direction']).size()
 count_u = data2.groupby(['location_name','Direction']).size().reset_index().rename(columns={0:'count'})
 #40 rows=40 couples (location, direction)
 count_u.info()
@@ -92,11 +105,7 @@ def Get_Time_Series(location,direction):
     volume=extract['Volume'].to_numpy()
     return volume
 
-    
-##list of location_names
-names=data2['location_name'].unique().tolist()
-#list of directions 
-directions=['NB','SB','EB','WB','None']
+
 
 ###################################################################
 ##DICTIONNARY of the locations and directions as key (couple) and the TRAFFIC VOLUME as a value
@@ -112,7 +121,8 @@ for i in range(len(volume)):
     key=couples[i] #(location,direction)
     data_dict[key]=volume[i]  
     
-
+#the data will be normalized later
+    
 ###########################################
 ## SLIDING WINDOW
 ###########################################
@@ -148,8 +158,8 @@ class TimeCNN(nn.Module):
         out = self.fc3(out)
         return out
 
-#seq=Get_Time_Series(names[0], directions[0])
-
+seq=Get_Time_Series(names[0], directions[0])
+np.mean(seq)
 #building the sliding window
 #n_steps=24*30*2 #2 months
 #horizon=24*7 #1 week
@@ -159,18 +169,20 @@ def split_ts(seq,horizon=24*7,n_steps=24*30*2):
     and applies a sliding window of length n_steps to generates samples having this 
     length and their labels (to be predicted) whose size is horizon
     """
+    #for the Min-Max normalization X-min(seq)/max(seq)-min(seq)
+    max_seq=max(seq)
+    min_seq=min(seq)
+    seq_norm=max_seq-min_seq
     xlist, ylist = [], []
     for i in range(len(seq)//horizon):
         end= i*horizon + n_steps
         if end+horizon > len(seq)-1:
             break
-        xx = seq[i*horizon:end]/vnorm
-        if max(xx)>xmax: xmax=max(xx)
-        if min(xx)<xmin: xmin=min(xx)
+        xx = (seq[i*horizon:end]-min_seq)/seq_norm
         xlist.append(torch.tensor(xx,dtype=torch.float32))
-        yy = seq[end:(end+horizon)]/vnorm
+        yy = (seq[end:(end+horizon)]-min_seq)/seq_norm
         ylist.append(torch.tensor(yy,dtype=torch.float32))
-        print("number of samples %d and sample size %d (3 months)" %(len(xlist),len(xlist[0])))
+    print("number of samples %d and sample size %d (%d months)" %(len(xlist),len(xlist[0]),n_steps/(24*30)))
     return(xlist,ylist)
 
 def train_test_set(xlist,ylist):
@@ -188,16 +200,16 @@ def train_test_set(xlist,ylist):
     return(X_train,Y_train,X_test,Y_test)
 
 
-def model_traffic(model,seq,num_ep=10,horizon=24*7,n_steps=24*30*2):
-    #inputs are the model, the Time Series sequence and the number of epochs
+def model_traffic(mod,seq,num_ep=60,horizon=24*7,n_steps=24*30*2):
+    #inputs are the model mod, the Time Series sequence and the number of epochs
     #building the model
     xlist,ylist = split_ts(seq,horizon,n_steps)
     X_train,Y_train,X_test,Y_test=train_test_set(xlist,ylist)
     idxtr = list(range(len(X_train)))
     #loss and optimizer
     loss = torch.nn.MSELoss()
-    opt = torch.optim.Adam(mod.parameters(),lr=0.01)
-    for ep in range(10):
+    opt = torch.optim.Adam(mod.parameters(),lr=0.001)
+    for ep in range(num_ep):
         shuffle(idxtr)
         ep_loss=0.
         mod.train()
@@ -214,9 +226,12 @@ def model_traffic(model,seq,num_ep=10,horizon=24*7,n_steps=24*30*2):
             ep_loss += lo.item()
         #model evaluation
         mod.eval()
-        haty = mod(X_test.view(1,1,-1))
-        test_loss= loss(haty,Y_test.view(1,-1))
-        print("epoch %d training loss %1.9f test loss %1.9f" % (ep, ep_loss, test_loss.item()))
+        test_loss=0
+        for i in range(len(X_test)):    
+            haty = mod(X_test[i].view(1,1,-1))
+            test_loss+= loss(haty,Y_test[i].view(1,-1))
+        if ep%20==0:
+            print("epoch %d training loss %1.9f test loss %1.9f" % (ep, ep_loss, test_loss.item()))
     #selected model (last epoch)
     test_loss=0
     for i in range(len(X_test)):    
@@ -229,7 +244,7 @@ def model_traffic(model,seq,num_ep=10,horizon=24*7,n_steps=24*30*2):
 # TRAINING AND EVALUATION OF THE MODEL FOR EACH (LOCATION,DIRECTION)
 ###################################################################
 results = pd.DataFrame( columns = ["couple", "training_loss", "test_loss"])
-num_ep=10
+num_ep=200
 horizon=24*7
 n_steps=24*30*2
 for l,d in data_dict.keys():
@@ -238,10 +253,10 @@ for l,d in data_dict.keys():
     print("couple:",(l,d))
     print("number of samples in the dataset:", len(xlist))
     mod = TimeCNN()
-    train_loss, test_loss =model_traffic(model,seq,num_ep,horizon,n_steps)
+    train_loss, test_loss =model_traffic(mod,seq,num_ep,horizon,n_steps)
     print("train_loss, test_loss =", train_loss, test_loss, "\n")
     results.loc[len(results)] = [couple, train_loss, test_loss]
-    del(model)
+    del(mod)
 
 
     """
