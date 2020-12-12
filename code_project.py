@@ -148,8 +148,10 @@ count_u.info()
 min(count_u['count']) #1
 max(count_u['count']) # 17206
 count_u['count'].mean() #12392.15
+count_u=count_u.sort_values(['count'])
 #we delete couples who have less than 100 counts
-new_data = count_u[count_u['count'] > 100] #6 couples were deleted, 34 are left
+new_data = count_u[count_u['count'] > 4000] #7 couples were deleted, 34 are left
+min(new_data['count']) #11491
 #for each location and direction we will have a time series
 #where the volume is a function of "Date-Hour"
 
@@ -346,8 +348,9 @@ seq=Get_Time_Series(names[0], directions[0])
 #eval_seq=seq[2*len(seq)//3:]    #sequence for the evaluation set
 
 #building the sliding window
-n_steps=24*30*3 #2 months
+n_steps=24*30*2 #2 months
 horizon=24*7 #1 week
+#min count in data is 11491 we will have a lot more than 7(mincount//n_steps) samples-we only move the window by 24*7
 def split_ts(seq,horizon,n_steps):
     """ this function take in arguments a traffic Time Series for the couple (l,d)
     and applies a sliding window of length n_steps to generates samples having this 
