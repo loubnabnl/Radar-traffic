@@ -349,19 +349,13 @@ class TimeCNN(nn.Module):
         out = self.fc3(out)
         return out
 
-si2X, si2Y = {}, {}
-dsi2X, dsi2Y = {}, {}
-#for s,i in dsi2c.keys():
-#    seq = dsi2c[(s,i)]
-seq=Get_Time_Series(names[0], directions[0])
-#train_seq=seq[:2*len(seq)//3] #sequence for the training set
-#eval_seq=seq[2*len(seq)//3:]    #sequence for the evaluation set
+#seq=Get_Time_Series(names[0], directions[0])
 
 #building the sliding window
-n_steps=24*30*2 #2 months
-horizon=24*7 #1 week
+#n_steps=24*30*2 #2 months
+#horizon=24*7 #1 week
 #min count in data is 11491 we will have a lot more than 7(mincount//n_steps) samples-we only move the window by 24*7
-def split_ts(seq,horizon,n_steps):
+def split_ts(seq,horizon=24*7,n_steps=24*30*2):
     """ this function take in arguments a traffic Time Series for the couple (l,d)
     and applies a sliding window of length n_steps to generates samples having this 
     length and their labels (to be predicted) whose size is horizon
@@ -394,15 +388,16 @@ def train_test_set(xlist,ylist):
     Y_test = ylist[data_size-test_size:]
     return(X_train,Y_train,X_test,Y_test)
 
-mod = TimeCNN()
-loss = torch.nn.MSELoss()
-opt = torch.optim.Adam(mod.parameters(),lr=0.01)
-def model_traffic(model,seq,num_ep=10):
+
+def model_traffic(model,seq,num_ep=10,horizon=24*7,n_steps=24*30*2):
     #inputs are the model, the Time Series sequence and the number of epochs
     #building the model
     xlist,ylist = split_ts(seq,horizon,n_steps)
     X_train,Y_train,X_test,Y_test=train_test_set(xlist,ylist)
     idxtr = list(range(len(X_train)))
+    #loss and optimizer
+    loss = torch.nn.MSELoss()
+    opt = torch.optim.Adam(mod.parameters(),lr=0.01)
     for ep in range(10):
         shuffle(idxtr)
         ep_loss=0.
@@ -435,7 +430,20 @@ def model_traffic(model,seq,num_ep=10):
 # TRAINING AND EVALUATION OF THE MODEL FOR EACH (LOCATION,DIRECTION)
 ###################################################################
 results = pd.DataFrame( columns = ["couple", "training_loss", "test_loss"])
-def Final_model
+num_ep=10
+horizon=24*7
+n_steps=24*30*2
+for l,d in data_dict.keys():
+    datac=data_dict[(l,d)] #volume sequence for (l,d) location, direction
+    xlist,ylist = split_ts(seq,horizon,n_steps)
+    print("couple:",(l,d))
+    print("number of samples in the dataset:", len(xlist))
+    mod = TimeCNN()
+    train_loss, test_loss =model_traffic(model,seq,num_ep,horizon,n_steps)
+    print("train_loss, test_loss =", train_loss, test_loss, "\n")
+    results.loc[len(results)] = [couple, train_loss, test_loss]
+    del(model)
+
 
     """
     n_steps=24*30*2 #2 months
