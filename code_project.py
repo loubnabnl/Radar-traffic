@@ -173,13 +173,13 @@ class TimeCNN(nn.Module):
         self.layer2 = nn.Sequential(
             nn.Conv1d(in_channels=32, out_channels=64, kernel_size=3),
             nn.ReLU(),
-            nn.AdaptiveMaxPool1d(24*14)
+            nn.AdaptiveMaxPool1d(2)
         )
-        self.fc1 = nn.Linear(in_features=64*24*14, out_features=120)
-        self.drop = nn.Dropout2d(0.3)
+        self.fc1 = nn.Linear(in_features=64*2, out_features=80)
+        self.drop = nn.Dropout2d(0.4)
         #self.fc2 = nn.Linear(in_features=200, out_features=400)
         #self.drop = nn.Dropout1d(0.3)
-        self.fc3 = nn.Linear(in_features=120, out_features=24*30)
+        self.fc3 = nn.Linear(in_features=80, out_features=24*30)
         
     def forward(self, x):
         out = self.layer1(x)
@@ -242,7 +242,7 @@ def model_traffic(mod,seq,num_ep=60,horizon=24*7,n_steps=24*30*2):
     idxtr = list(range(len(X_train)))
     #loss and optimizer
     loss = torch.nn.MSELoss()
-    opt = torch.optim.Adam(mod.parameters(),lr=0.0005)
+    opt = torch.optim.Adam(mod.parameters(),lr=0.001)
     loss_val_train=[]
     loss_val_test=[]
     for ep in range(num_ep):
@@ -272,8 +272,8 @@ def model_traffic(mod,seq,num_ep=60,horizon=24*7,n_steps=24*30*2):
             print("epoch %d training loss %1.9f test loss %1.9f" % (ep, ep_loss, test_loss))
     #test_loss is given for the selected model (last epoch)
     epochs=[i for i in range(num_ep)]
-    plt.plot(epochs,loss_val_train)
-    plt.plot(epochs,loss_val_test)
+    plt.plot(epochs,loss_val_train,label='training loss')
+    plt.plot(epochs,loss_val_test,label='test loss')
     plt.show()
     return ep_loss,test_loss
 
