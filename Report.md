@@ -29,8 +29,11 @@ Next for a given day, location and direction, we will sum the traffic volume ove
 The figure below shows an extract of the data we get after these transformations<br>
 <img src="https://user-images.githubusercontent.com/44069155/101657104-c955df00-3a43-11eb-97e8-a6adda17d239.png" width="50%"/>
 <br>
-So for each couple (location, direction) we will have a Time Series of traffic volume per hour.
+So for each couple (location, direction) we will have a Time Series of traffic volume per hour, for which we defined a function *Get_Time_Series* .
 Next we want to make our Time Series ready for a supervised Machine Learning algorithm, and create multiple samples for the training phase of our model. We will first use the growing window technique, then we will use the sliding window technique which resulted in a better performance in our case. For the model we will use Convolutionnal Neural Networks who proved to be very efficient in Time Series forecasting. We will do numerous experimentations for the prediction by trying different time lags (prediction for a week, a month..) which can be useful in case of objectives that are different than the one we chose. <br>
+#### Remark:
+* Concerning the feature scaling, we will normalize our data within the function *split_ts* defined later. We choose the Standardization method, by substracting the mean of the sequence and dividing by the standard deviation.
+* We will see that we will predict the traffic for 1 month based on 3 months data with contains 24 hours for 30 days in 3 months with means 2160 entries. Therefore we need to make sure that we have enough
 
 ## Model: Convolutional Neural Network
 As we explained previously, we will use convolutionnal neural networks to predict the traffic volume, in this section we will explain in detail the structure of the model and the data. Our approach was inspired by Mr. Christophe Cerisara's code for a project of sales prediction using Convolutionnal Neural Networks [[3]](#3).
@@ -39,7 +42,10 @@ As we explained previously, we will use convolutionnal neural networks to predic
 We first need to make our data ready for the neural network by creating multiple samples with their labels. Here we will present our approach for a particular example which is the prediction of the traffic volume for January 2020 for each day and for each hour, which gives as an output of length 24\*30 (24 hours and 30 days), the prediction will be based on the previous 3 months, so the window size will be 24\*30\*3. Our sliding window will move by time-step equal to the length of the output. The function *split_ts* takes as inputs the location and direction and returns a list of samples and a list of their labels. Then we defined a function *train_test_set* that creates the training set and test set from the output of the function *split_ts*, the test set size is 20\% of the data. The data is not randomly shuffled so that the windows are built on consecutive samples, and to ensure that the test results are realistic, being evaluated on data collected after training the model [[4]](#4).
 
 ### Structure of the Neural network
-In this section we will present the structure of our network. We used a 1D convolutional Neural Network with 2 convolutionnal layers both with kernel size equal to 3 and two fully connected layers. We used an Adam optimizer with a learning rate equal to 0.001 and an MSE loss. The in_channels number is equal to 1 and the output size is 24\*30 is the case of prediction for January 2020. We tried different values for the number of neurons in the hidden layers, we added a dropout layer to prevent the model from overfitting.
+In this section we will present the structure of our network. We used a 1D convolutional Neural Network with 2 convolutionnal layers both with kernel size equal to 3 and two fully connected layers. We used an Adam optimizer with a learning rate equal to 0.001 and an MSE loss. The *in_channels* number is equal to 1 and the output size is 24\*30 is the case of prediction for January 2020. We tried different values for the number of neurons in the hidden layers, we added a dropout layer to prevent the model from overfitting.
+
+### General Approach
+After we defined the neural network and preprocessed our data. We created a dictionnary whose keys are the couples (location,direction) and whose values are the time series for the corresponding couple. So for each couple we trained and evaluated our model on the corresponding data. The training loss decreases when the epochs increase, however we had some trouble in making the test_loss decrease, which suggested an overfitting problem. Therefore we added the dropout layer and tried to decrease the number of neurons in our neural network wich gave better results but only for some locations and directions as it's shown in the figures below.
 
 
 ## References 
