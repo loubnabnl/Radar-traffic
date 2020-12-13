@@ -166,16 +166,16 @@ class TimeCNN(nn.Module):
     def __init__(self):
         super(TimeCNN, self).__init__()
         self.layer1 = nn.Sequential(
-            nn.Conv1d(in_channels=1, out_channels=32, kernel_size=3, padding=1),
+            nn.Conv1d(in_channels=1, out_channels=32, kernel_size=2, padding=1),
             nn.ReLU(),
             nn.MaxPool1d(kernel_size=2, stride=2)
         )
         self.layer2 = nn.Sequential(
-            nn.Conv1d(in_channels=32, out_channels=64, kernel_size=3),
+            nn.Conv1d(in_channels=32, out_channels=64, kernel_size=2),
             nn.ReLU(),
-            nn.AdaptiveMaxPool1d(2)
+            nn.AdaptiveMaxPool1d(1)
         )
-        self.fc1 = nn.Linear(in_features=64*2, out_features=80)
+        self.fc1 = nn.Linear(in_features=64*1, out_features=80)
         self.drop = nn.Dropout2d(0.4)
         #self.fc2 = nn.Linear(in_features=200, out_features=400)
         #self.drop = nn.Dropout1d(0.3)
