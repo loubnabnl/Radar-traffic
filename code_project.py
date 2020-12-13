@@ -173,13 +173,13 @@ class TimeCNN(nn.Module):
         self.layer2 = nn.Sequential(
             nn.Conv1d(in_channels=32, out_channels=64, kernel_size=3),
             nn.ReLU(),
-            nn.AdaptiveMaxPool1d(8)
+            nn.AdaptiveMaxPool1d(24*14)
         )
-        self.fc1 = nn.Linear(in_features=64*8, out_features=120)
+        self.fc1 = nn.Linear(in_features=64*24*14, out_features=120)
         self.drop = nn.Dropout2d(0.3)
         #self.fc2 = nn.Linear(in_features=200, out_features=400)
         #self.drop = nn.Dropout1d(0.3)
-        self.fc3 = nn.Linear(in_features=120, out_features=24*7)
+        self.fc3 = nn.Linear(in_features=120, out_features=24*30)
         
     def forward(self, x):
         out = self.layer1(x)
@@ -243,6 +243,8 @@ def model_traffic(mod,seq,num_ep=60,horizon=24*7,n_steps=24*30*2):
     #loss and optimizer
     loss = torch.nn.MSELoss()
     opt = torch.optim.Adam(mod.parameters(),lr=0.0005)
+    loss_val_train=[]
+    loss_val_test=[]
     for ep in range(num_ep):
         shuffle(idxtr)
         ep_loss=0.
@@ -258,19 +260,21 @@ def model_traffic(mod,seq,num_ep=60,horizon=24*7,n_steps=24*30*2):
             #optimization
             opt.step()
             ep_loss += lo.item()
+        loss_val_train.append(ep_loss)
         #model evaluation
         mod.eval()
         test_loss=0
         for i in range(len(X_test)):    
             haty = mod(X_test[i].view(1,1,-1))
             test_loss+= loss(haty,Y_test[i].view(1,-1)).item()
+        loss_val_test.append(test_loss)
         if ep%50==0:
             print("epoch %d training loss %1.9f test loss %1.9f" % (ep, ep_loss, test_loss))
-    #selected model (last epoch)
-    test_loss=0.
-    for i in range(len(X_test)):    
-        haty = mod(X_test[i].view(1,1,-1))
-        test_loss+= loss(haty,Y_test[i].view(1,-1)).item()
+    #test_loss is given for the selected model (last epoch)
+    epochs=[i for i in range(num_ep)]
+    plt.plot(epochs,loss_val_train)
+    plt.plot(epochs,loss_val_test)
+    plt.show()
     return ep_loss,test_loss
 
 
@@ -279,8 +283,8 @@ def model_traffic(mod,seq,num_ep=60,horizon=24*7,n_steps=24*30*2):
 ###################################################################
 results = pd.DataFrame( columns = ["couple", "training_loss", "test_loss"])
 num_ep=500
-horizon=24*7
-n_steps=24*28*3
+horizon=24*30
+n_steps=24*30*3
 for l,d in data_dict.keys():
     seq=data_dict[(l,d)] #volume sequence for (l,d) location, direction
     xlist,ylist = split_ts(seq,horizon,n_steps)
