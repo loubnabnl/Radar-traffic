@@ -175,10 +175,11 @@ class TimeCNN(nn.Module):
             nn.ReLU(),
             nn.AdaptiveMaxPool1d(8)
         )
-        self.fc1 = nn.Linear(in_features=64*8, out_features=130)
+        self.fc1 = nn.Linear(in_features=64*8, out_features=120)
         self.drop = nn.Dropout2d(0.3)
-        #self.fc2 = nn.Linear(in_features=128, out_features=32)
-        self.fc3 = nn.Linear(in_features=130, out_features=24*7)
+        #self.fc2 = nn.Linear(in_features=200, out_features=400)
+        #self.drop = nn.Dropout1d(0.3)
+        self.fc3 = nn.Linear(in_features=120, out_features=24*7)
         
     def forward(self, x):
         out = self.layer1(x)
@@ -187,9 +188,10 @@ class TimeCNN(nn.Module):
         out = self.fc1(out)
         out = self.drop(out)
         #out = self.fc2(out)
+        #out = self.drop(out)
         out = self.fc3(out)
         return out
-#seq=Get_Time_Series(names[0], directions[0])
+seq=Get_Time_Series(names[0], directions[0])
 #building the sliding window
 #n_steps=24*30*2 #2 months
 #horizon=24*7 #1 week
@@ -200,17 +202,19 @@ def split_ts(seq,horizon=24*7,n_steps=24*30*2):
     length and their labels (to be predicted) whose size is horizon
     """
     #for the Min-Max normalization X-min(seq)/max(seq)-min(seq)
-    max_seq=max(seq)
-    min_seq=min(seq)
-    seq_norm=max_seq-min_seq
+    seq_mean = seq.mean()
+    seq_std = seq.std()
+    #max_seq=max(seq)
+    #min_seq=min(seq)
+    #seq_norm=max_seq-min_seq
     xlist, ylist = [], []
     for i in range(len(seq)//horizon):
         end= i*horizon + n_steps
         if end+horizon > len(seq)-1:
             break
-        xx = (seq[i*horizon:end]-min_seq)/seq_norm
+        xx = (seq[i*horizon:end]-seq_mean)/seq_std
         xlist.append(torch.tensor(xx,dtype=torch.float32))
-        yy = (seq[end:(end+horizon)]-min_seq)/seq_norm
+        yy = (seq[end:(end+horizon)]-seq_mean)/seq_std
         ylist.append(torch.tensor(yy,dtype=torch.float32))
     print("number of samples %d and sample size %d (%d months)" %(len(xlist),len(xlist[0]),n_steps/(24*30)))
     return(xlist,ylist)
@@ -218,7 +222,6 @@ def split_ts(seq,horizon=24*7,n_steps=24*30*2):
 def train_test_set(xlist,ylist):
     """ this functions splits the samples and labels datasets xlist and ylist
     (given by the function split_ts) into a training set and a test set
-    """
     """
     data_size=len(xlist)
     test_size=int(data_size*0.2) #20% of the dataset
@@ -228,8 +231,7 @@ def train_test_set(xlist,ylist):
     #test set
     X_test = xlist[data_size-test_size:]
     Y_test = ylist[data_size-test_size:]
-    """
-    X_train, X_test, Y_train, Y_test =train_test_split(xlist,ylist,test_size=0.2,random_state=1)
+    #X_train, X_test, Y_train, Y_test =train_test_split(xlist,ylist,test_size=0.2,random_state=1)
     return(X_train,Y_train,X_test,Y_test)
 
 def model_traffic(mod,seq,num_ep=60,horizon=24*7,n_steps=24*30*2):
@@ -261,14 +263,14 @@ def model_traffic(mod,seq,num_ep=60,horizon=24*7,n_steps=24*30*2):
         test_loss=0
         for i in range(len(X_test)):    
             haty = mod(X_test[i].view(1,1,-1))
-            test_loss+= loss(haty,Y_test[i].view(1,-1))
+            test_loss+= loss(haty,Y_test[i].view(1,-1)).item()
         if ep%50==0:
-            print("epoch %d training loss %1.9f test loss %1.9f" % (ep, ep_loss, test_loss.item()))
+            print("epoch %d training loss %1.9f test loss %1.9f" % (ep, ep_loss, test_loss))
     #selected model (last epoch)
-    test_loss=0
+    test_loss=0.
     for i in range(len(X_test)):    
         haty = mod(X_test[i].view(1,1,-1))
-        test_loss+= loss(haty,Y_test[i].view(1,-1))
+        test_loss+= loss(haty,Y_test[i].view(1,-1)).item()
     return ep_loss,test_loss
 
 
