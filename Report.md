@@ -50,7 +50,7 @@ After we defined the neural network and preprocessed our data. We created a dict
 
 ## Results
 In this section we will present the results we obtained in terms of model performance and prediction. The figures below show some of the losses we got for some couples of location name and direction.
-#### Results for some locations and their directions
+### Results for some locations and their directions
 
 ##### 3 months based prediction
 
@@ -72,7 +72,7 @@ We created a dataframe called *results* showed below, it contains the training l
 <br>
 We tried different network structures but the results didn't improve, but there was one approach which proved to be efficient, it's predcting the one month based on 5 months instead of 3, this gives our model larger window sequences of time to learn from and to capture enough patterns.
 
-##### 5 months based prediction
+#### 5 months based prediction
 
 This is an extract of the first 10 values of the dataframe *results* when we predict the traffic for 1 month based on the previous 5 months data. we can see that the losses are smaller than those returned by the previous model.
 <br>
@@ -85,6 +85,15 @@ The figures below show the loss curves for the couples **('CAPITAL OF TEXAS HWY 
 <br>
 <img src="https://user-images.githubusercontent.com/44069155/102123992-fccfa980-3e47-11eb-90cf-7cb423ff1f72.png" width="50%"/>
 <br>
+We will keep this model for the prediction.
+
+### Prediction
+The following figure shows the traffic prediction for January 2020 using the model with 5 months based prediction for the couple **('CAPITAL OF TEXAS HWY / CEDAR ST','NB')**.
+<br>
+<img src="https://user-images.githubusercontent.com/44069155/102143098-bbe58e00-3e63-11eb-9c49-f3d9dee54669.png" width="50%"/>
+<br>
+The x axis corresponds to dates that were converted into successive indexes.
+
 ## References 
 <a id="1">[1]</a> 
 https://members.loria.fr/CCerisara/#courses/machine_learning/ <br>
