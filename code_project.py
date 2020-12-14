@@ -101,15 +101,17 @@ min(new_data['count']) #11491
 def Get_Time_Series(location,direction,dates=False):
     #location and direction are strings
     extract=data2.loc[data2.location_name==location][data2.Direction==direction]
-    volume=extract['Volume'].to_numpy()
-    if dates==True:
-        return volume
+    volume=extract['Volume']
+    if dates==False:
+        return volume.to_numpy()
     else:
+        #we will need this part later for the plots
         dates=extract['Date']
-        dataf=pd.DataFrame(volume,dates,columns = ["dates", "volume"])
-        return volume,dates
-
-
+        frame = {'date': dates,'volume': volume} 
+        dataf=pd.DataFrame(frame)
+        return dataf
+#test
+#seq=Get_Time_Series(names[0], directions[0])
 
 ###################################################################
 ##DICTIONNARY of the locations and directions as key (couple) and the TRAFFIC VOLUME as a value
@@ -134,7 +136,7 @@ for i in range(len(volume)):
 #goal: Predict one week traffic(for each day per hour) based on the past 2 months
 #1 week prediction
 ##convolutional neural network for sliding window
-
+#this network structure and the splitting method were inspired from Mr Christophe Cerisara's code for a problem of sales prediction
 class TimeCNN(nn.Module):
     def __init__(self):
         super(TimeCNN, self).__init__()
@@ -163,7 +165,7 @@ class TimeCNN(nn.Module):
         out = self.drop(out)
         out = self.fc2(out)
         return out
-#seq=Get_Time_Series(names[0], directions[0])
+
 #building the sliding window
 #n_steps=24*30*2 #2 months
 #horizon=24*7 #1 week
@@ -259,6 +261,7 @@ def model_traffic(mod,seq,num_ep=60,horizon=24*7,n_steps=24*30*2):
 ###################################################################
 # TRAINING AND EVALUATION OF THE MODEL FOR EACH (LOCATION,DIRECTION)
 ###################################################################
+    """
 results =pd.DataFrame( columns = ["couple", "training_loss", "test_loss"])
 num_ep=500
 horizon=24*30
@@ -274,31 +277,33 @@ for l,d in list(data_dict.keys())[5:]:
     print("train_loss, test_loss =", train_loss, test_loss, "\n")
     results.loc[len(results)] = [couple, train_loss, test_loss]
     del(mod)
-
+"""
 #plot the predictions Vs real values for test set
 #for the first couple in the dictionnary
 l,d=list(data_dict.keys())[0]
+#Get_Time_Series(location,direction,dates=False)
 seq=data_dict[(l,d)] #volume sequence for (l,d) location, direction
 xlist,ylist = split_ts(seq,horizon,n_steps)
 print("couple:",(l,d))
 print("number of samples in the dataset:", len(xlist))
 mod = TimeCNN()
-train_loss, test_loss =model_traffic(mod,seq,num_ep,horizon,n_steps)
+train_loss, test_loss =model_traffic(mod,seq,350,horizon,n_steps)
 X_train,Y_train,X_test,Y_test=train_test_set(xlist,ylist)
-#prediction of the traffic for januray 2020 based on the previous 5 months
+
+#prediction of the traffic for December 2019 based on the previous 5 months
 #=last sample in X_test
-Y_pred = mod(X_test[len(X_test)-1].view(1,1,-1))
-Y_real=Y_test[len(Y_test)-1]
-#previous data (5 months)
-prev_months=[]
-for i in range(5):
-    prev_months+=X_test[len(X_test)-i]
-fig, ax = plt.subplots(1, 2,figsize=(11,4))
+for
+true_seq=list(X_test[len(X_test)-1].detach().numpy())+list(Y_test[len(Y_test)-1].detach().numpy())
+pred_seq=mod(X_test[len(X_test)-1].view(1,1,-1)).detach().numpy()
+pred_seq=list(np.transpose(pred_seq).reshape(720))
+index=[ i for i in range(len(X_test))]
+index_y=[i for i in range(len(Y_test))]
+fig, ax = plt.subplots()
 ax.set_title('Comparison between the predicted traffic and the real one')
-#ax.plot(epochs,Y_real,label='real traffic')
-#ax.plot(epochs,Y_pred,label='predicted traffic')
-#ax.legend()
-#plt.show()
+ax.plot(index,true_seq,label='real traffic')
+ax.plot(index_y,pred_seq,label='predicted traffic')
+ax.legend()
+plt.show()
 
 """
     n_steps=24*30*2 #2 months
