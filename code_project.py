@@ -98,12 +98,16 @@ min(new_data['count']) #11491
 #where the volume is a function of "Date-Hour"
 
 
-def Get_Time_Series(location,direction):
+def Get_Time_Series(location,direction,dates=False):
     #location and direction are strings
     extract=data2.loc[data2.location_name==location][data2.Direction==direction]
-    #dates=extract['Date']
     volume=extract['Volume'].to_numpy()
-    return volume
+    if dates==True:
+        return volume
+    else:
+        dates=extract['Date']
+        dataf=pd.DataFrame(volume,dates,columns = ["dates", "volume"])
+        return volume,dates
 
 
 
@@ -130,38 +134,7 @@ for i in range(len(volume)):
 #goal: Predict one week traffic(for each day per hour) based on the past 2 months
 #1 week prediction
 ##convolutional neural network for sliding window
-    """
-class TimeCNN(nn.Module):
-    def __init__(self):
-        super(TimeCNN, self).__init__()
-        self.layer1 = nn.Sequential(
-            nn.Conv1d(in_channels=1, out_channels=32, kernel_size=3, padding=1),
-            nn.ReLU(),
-            nn.MaxPool1d(kernel_size=2, stride=2)
-        )
-        self.layer2 = nn.Sequential(
-            nn.Conv1d(in_channels=32, out_channels=64, kernel_size=3),
-            nn.ReLU(),
-            nn.AdaptiveMaxPool1d(8)
-        )
 
-        self.fc1 = nn.Linear(in_features=64*8, out_features=130)
-        self.drop1 = nn.Dropout2d(0.1)
-        self.fc2 = nn.Linear(in_features=130, out_features=200)
-        self.drop2 = nn.Dropout2d(0.1)
-        self.fc3 = nn.Linear(in_features=200, out_features=24*7)
-        
-    def forward(self, x):
-        out = self.layer1(x)
-        out = self.layer2(out)
-        out = out.view(out.size(0), -1)
-        out = self.fc1(out)
-        out = self.drop1(out)
-        out = self.fc2(out)
-        out = self.drop2(out)
-        out = self.fc3(out)
-        return out
-"""
 class TimeCNN(nn.Module):
     def __init__(self):
         super(TimeCNN, self).__init__()
@@ -190,7 +163,7 @@ class TimeCNN(nn.Module):
         out = self.drop(out)
         out = self.fc2(out)
         return out
-seq=Get_Time_Series(names[0], directions[0])
+#seq=Get_Time_Series(names[0], directions[0])
 #building the sliding window
 #n_steps=24*30*2 #2 months
 #horizon=24*7 #1 week
@@ -286,11 +259,12 @@ def model_traffic(mod,seq,num_ep=60,horizon=24*7,n_steps=24*30*2):
 ###################################################################
 # TRAINING AND EVALUATION OF THE MODEL FOR EACH (LOCATION,DIRECTION)
 ###################################################################
-results = pd.DataFrame( columns = ["couple", "training_loss", "test_loss"])
+results =pd.DataFrame( columns = ["couple", "training_loss", "test_loss"])
 num_ep=500
 horizon=24*30
 n_steps=24*30*5
-for l,d in data_dict.keys():
+for l,d in list(data_dict.keys())[5:]:
+    couple=(l,d)
     seq=data_dict[(l,d)] #volume sequence for (l,d) location, direction
     xlist,ylist = split_ts(seq,horizon,n_steps)
     print("couple:",(l,d))
@@ -301,9 +275,32 @@ for l,d in data_dict.keys():
     results.loc[len(results)] = [couple, train_loss, test_loss]
     del(mod)
 
+#plot the predictions Vs real values for test set
+#for the first couple in the dictionnary
+l,d=list(data_dict.keys())[0]
+seq=data_dict[(l,d)] #volume sequence for (l,d) location, direction
+xlist,ylist = split_ts(seq,horizon,n_steps)
+print("couple:",(l,d))
+print("number of samples in the dataset:", len(xlist))
+mod = TimeCNN()
+train_loss, test_loss =model_traffic(mod,seq,num_ep,horizon,n_steps)
+X_train,Y_train,X_test,Y_test=train_test_set(xlist,ylist)
+#prediction of the traffic for januray 2020 based on the previous 5 months
+#=last sample in X_test
+Y_pred = mod(X_test[len(X_test)-1].view(1,1,-1))
+Y_real=Y_test[len(Y_test)-1]
+#previous data (5 months)
+prev_months=[]
+for i in range(5):
+    prev_months+=X_test[len(X_test)-i]
+fig, ax = plt.subplots(1, 2,figsize=(11,4))
+ax.set_title('Comparison between the predicted traffic and the real one')
+#ax.plot(epochs,Y_real,label='real traffic')
+#ax.plot(epochs,Y_pred,label='predicted traffic')
+#ax.legend()
+#plt.show()
 
-
-    """
+"""
     n_steps=24*30*2 #2 months
 horizon=24*7 #1 week
 epoch 0 loss 14.161140896 testMSE 0.157792360
