@@ -165,21 +165,22 @@ class TimeCNN(nn.Module):
 class TimeCNN(nn.Module):
     def __init__(self):
         super(TimeCNN, self).__init__()
+        #1st convolutional layer
         self.layer1 = nn.Sequential(
-            nn.Conv1d(in_channels=1, out_channels=32, kernel_size=24*7, padding=1),
+            nn.Conv1d(in_channels=1, out_channels=32, kernel_size=3, padding=1),
             nn.ReLU(),
             nn.MaxPool1d(kernel_size=2, stride=2)
         )
+        #2nd convolutional layer
         self.layer2 = nn.Sequential(
-            nn.Conv1d(in_channels=32, out_channels=64, kernel_size=2),
+            nn.Conv1d(in_channels=32, out_channels=64, kernel_size=3),
             nn.ReLU(),
-            nn.AdaptiveMaxPool1d(8)
+            nn.AdaptiveMaxPool1d(24*14)
         )
-        self.fc1 = nn.Linear(in_features=64*8, out_features=120)
+        #fully connected layers
+        self.fc1 = nn.Linear(in_features=64*24*14, out_features=120)
         self.drop = nn.Dropout2d(0.3)
-        self.fc2 = nn.Linear(in_features=120, out_features=200)
-        self.drop = nn.Dropout2d(0.3)
-        self.fc3 = nn.Linear(in_features=200, out_features=24*7)
+        self.fc2 = nn.Linear(in_features=120, out_features=24*30)
         
     def forward(self, x):
         out = self.layer1(x)
@@ -188,10 +189,8 @@ class TimeCNN(nn.Module):
         out = self.fc1(out)
         out = self.drop(out)
         out = self.fc2(out)
-        out = self.drop(out)
-        out = self.fc3(out)
         return out
-#seq=Get_Time_Series(names[0], directions[0])
+seq=Get_Time_Series(names[0], directions[0])
 #building the sliding window
 #n_steps=24*30*2 #2 months
 #horizon=24*7 #1 week
@@ -289,8 +288,8 @@ def model_traffic(mod,seq,num_ep=60,horizon=24*7,n_steps=24*30*2):
 ###################################################################
 results = pd.DataFrame( columns = ["couple", "training_loss", "test_loss"])
 num_ep=500
-horizon=24*7
-n_steps=24*30*3
+horizon=24*30
+n_steps=24*30*5
 for l,d in data_dict.keys():
     seq=data_dict[(l,d)] #volume sequence for (l,d) location, direction
     xlist,ylist = split_ts(seq,horizon,n_steps)
@@ -301,6 +300,7 @@ for l,d in data_dict.keys():
     print("train_loss, test_loss =", train_loss, test_loss, "\n")
     results.loc[len(results)] = [couple, train_loss, test_loss]
     del(mod)
+
 
 
     """
