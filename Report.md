@@ -51,21 +51,33 @@ After we defined the neural network and preprocessed our data. We created a dict
 ## Results
 In this section we will present the results we obtained in terms of model performance and prediction. The figures below show some of the losses we got for some couples of location name and direction.
 #### Results for some locations and their directions
+
+##### 3 months prediction based
+
 **For location=' CAPITAL OF TEXAS HWY / CEDAR ST' and direction='NB'**, we get 12 samples of size 2160 (hours in 3 months) each with a label of size 720 (hours in 1 month). After the training we get a training loss in the range of 0.01 and a test loss of the range 0.05. The figures below show the results for 500 epochs, we can see that the test loss doesn't quite improve after the epoch 50 but the training loss does decearse.
 <br>
-<img src="https://user-images.githubusercontent.com/44069155/101657104-c955df00-3a43-11eb-97e8-a6adda17d239.png" width="50%"/>
+<img src="https://user-images.githubusercontent.com/44069155/102122137-5c788580-3e45-11eb-88b0-fd9c4b2d2acc.png" width="50%"/>
 <br>
-<br>
-<img src="https://user-images.githubusercontent.com/44069155/101657104-c955df00-3a43-11eb-97e8-a6adda17d239.png" width="50%"/>
+<img src="https://user-images.githubusercontent.com/44069155/102122475-cee96580-3e45-11eb-86b2-81faf6585b71.png" width="50%"/>
 <br>
 **For location=' LAMAR BLVD / ZENNIA ST' and direction='NB'**, we get 13 samples with size 2160. The figures below show the values of the training loss and test loss after each 50 epochs. We got a final training loss in the range of 0.03 and the test loss was in the range 0.07.
 <br>
-<img src="https://user-images.githubusercontent.com/44069155/101657104-c955df00-3a43-11eb-97e8-a6adda17d239.png" width="50%"/>
+<img src="https://user-images.githubusercontent.com/44069155/102122616-00623100-3e46-11eb-8042-19e51b113ddb.png" width="50%"/>
 <br>
+<img src="https://user-images.githubusercontent.com/44069155/102122683-24be0d80-3e46-11eb-979d-9cdaf5b807ed.png" width="50%"/>
 <br>
-<img src="https://user-images.githubusercontent.com/44069155/101657104-c955df00-3a43-11eb-97e8-a6adda17d239.png" width="50%"/>
-<br>
+We created a dataframe called *results* showed below, it contains the training loss and test loss at epoch 500 for each couple of location and direction. We can see that the results are not quite good for all the locations.<br>
+We tried different network structures but the results didn't improve, but there was one approach which proved to be efficient, it's predcting the one month based on 5 months instead of 3, this gives our model larger window sequences of time to learn from.
 
+##### 5 months prediction based
+
+THis is the dataframe results when we predict the traffic for 1 month based on the previous 5 months data. we can see that the losses are smaller than those returned by the previous model.<br>
+The figures below show the loss curves for the couples **('CAPITAL OF TEXAS HWY / CEDAR ST','NB')** and **('LAMAR BLVD / ZENNIA ST','NB')** respectively:
+<br>
+<img src="https://user-images.githubusercontent.com/44069155/102123921-e3c6f880-3e47-11eb-980f-3b197fd2aa9e.png" width="50%"/>
+<br>
+<img src="https://user-images.githubusercontent.com/44069155/102123992-fccfa980-3e47-11eb-90cf-7cb423ff1f72.png" width="50%"/>
+<br>
 ## References 
 <a id="1">[1]</a> 
 https://members.loria.fr/CCerisara/#courses/machine_learning/ <br>
