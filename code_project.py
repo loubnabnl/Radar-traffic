@@ -166,20 +166,20 @@ class TimeCNN(nn.Module):
     def __init__(self):
         super(TimeCNN, self).__init__()
         self.layer1 = nn.Sequential(
-            nn.Conv1d(in_channels=1, out_channels=32, kernel_size=2, padding=1),
+            nn.Conv1d(in_channels=1, out_channels=32, kernel_size=24*7, padding=1),
             nn.ReLU(),
             nn.MaxPool1d(kernel_size=2, stride=2)
         )
         self.layer2 = nn.Sequential(
             nn.Conv1d(in_channels=32, out_channels=64, kernel_size=2),
             nn.ReLU(),
-            nn.AdaptiveMaxPool1d(1)
+            nn.AdaptiveMaxPool1d(8)
         )
-        self.fc1 = nn.Linear(in_features=64*1, out_features=80)
-        self.drop = nn.Dropout2d(0.4)
-        #self.fc2 = nn.Linear(in_features=200, out_features=400)
-        #self.drop = nn.Dropout1d(0.3)
-        self.fc3 = nn.Linear(in_features=80, out_features=24*30)
+        self.fc1 = nn.Linear(in_features=64*8, out_features=120)
+        self.drop = nn.Dropout2d(0.3)
+        self.fc2 = nn.Linear(in_features=120, out_features=200)
+        self.drop = nn.Dropout2d(0.3)
+        self.fc3 = nn.Linear(in_features=200, out_features=24*7)
         
     def forward(self, x):
         out = self.layer1(x)
@@ -187,11 +187,11 @@ class TimeCNN(nn.Module):
         out = out.view(out.size(0), -1)
         out = self.fc1(out)
         out = self.drop(out)
-        #out = self.fc2(out)
-        #out = self.drop(out)
+        out = self.fc2(out)
+        out = self.drop(out)
         out = self.fc3(out)
         return out
-seq=Get_Time_Series(names[0], directions[0])
+#seq=Get_Time_Series(names[0], directions[0])
 #building the sliding window
 #n_steps=24*30*2 #2 months
 #horizon=24*7 #1 week
@@ -202,19 +202,19 @@ def split_ts(seq,horizon=24*7,n_steps=24*30*2):
     length and their labels (to be predicted) whose size is horizon
     """
     #for the Min-Max normalization X-min(seq)/max(seq)-min(seq)
-    seq_mean = seq.mean()
-    seq_std = seq.std()
-    #max_seq=max(seq)
-    #min_seq=min(seq)
-    #seq_norm=max_seq-min_seq
+    #seq_mean = seq.mean()
+    #seq_std = seq.std()
+    max_seq=max(seq)
+    min_seq=min(seq)
+    seq_norm=max_seq-min_seq
     xlist, ylist = [], []
     for i in range(len(seq)//horizon):
         end= i*horizon + n_steps
         if end+horizon > len(seq)-1:
             break
-        xx = (seq[i*horizon:end]-seq_mean)/seq_std
+        xx = (seq[i*horizon:end]-min_seq)/seq_norm
         xlist.append(torch.tensor(xx,dtype=torch.float32))
-        yy = (seq[end:(end+horizon)]-seq_mean)/seq_std
+        yy = (seq[end:(end+horizon)]-min_seq)/seq_norm
         ylist.append(torch.tensor(yy,dtype=torch.float32))
     print("number of samples %d and sample size %d (%d months)" %(len(xlist),len(xlist[0]),n_steps/(24*30)))
     return(xlist,ylist)
@@ -242,12 +242,15 @@ def model_traffic(mod,seq,num_ep=60,horizon=24*7,n_steps=24*30*2):
     idxtr = list(range(len(X_train)))
     #loss and optimizer
     loss = torch.nn.MSELoss()
-    opt = torch.optim.Adam(mod.parameters(),lr=0.001)
+    opt = torch.optim.Adam(mod.parameters(),lr=0.0005)
     loss_val_train=[]
     loss_val_test=[]
+    #train_loader = torch.utils.data.DataLoader(train_data)
+    #test_loader = torch.utils.data.DataLoader(test_data)
     for ep in range(num_ep):
         shuffle(idxtr)
-        ep_loss=0.
+        ep_loss=0
+        test_loss=0
         mod.train()
         for j in idxtr:
             opt.zero_grad()
@@ -260,30 +263,33 @@ def model_traffic(mod,seq,num_ep=60,horizon=24*7,n_steps=24*30*2):
             #optimization
             opt.step()
             ep_loss += lo.item()
+        #ep_loss=ep_loss/len(X_train)
         loss_val_train.append(ep_loss)
         #model evaluation
         mod.eval()
-        test_loss=0
         for i in range(len(X_test)):    
             haty = mod(X_test[i].view(1,1,-1))
             test_loss+= loss(haty,Y_test[i].view(1,-1)).item()
+        #test_loss=test_loss/len(X_test)
         loss_val_test.append(test_loss)
         if ep%50==0:
             print("epoch %d training loss %1.9f test loss %1.9f" % (ep, ep_loss, test_loss))
     #test_loss is given for the selected model (last epoch)
     epochs=[i for i in range(num_ep)]
-    plt.plot(epochs,loss_val_train,label='training loss')
-    plt.plot(epochs,loss_val_test,label='test loss')
+    fig, ax = plt.subplots()
+    ax.plot(epochs,loss_val_train,label='training loss')
+    ax.plot(epochs,loss_val_test,label='test loss')
+    ax.legend()
     plt.show()
     return ep_loss,test_loss
 
-
+    
 ###################################################################
 # TRAINING AND EVALUATION OF THE MODEL FOR EACH (LOCATION,DIRECTION)
 ###################################################################
 results = pd.DataFrame( columns = ["couple", "training_loss", "test_loss"])
 num_ep=500
-horizon=24*30
+horizon=24*7
 n_steps=24*30*3
 for l,d in data_dict.keys():
     seq=data_dict[(l,d)] #volume sequence for (l,d) location, direction
