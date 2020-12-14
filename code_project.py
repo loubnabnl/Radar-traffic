@@ -2,9 +2,8 @@
 """
 Created on Sat Nov 21 12:12:09 2020
 
-@author: 33758
+@author: Loubna Ben Allal
 """
-
 
 import numpy as np
 import pandas as pd
@@ -19,6 +18,7 @@ from torch.autograd import Variable
 
 import torchvision
 
+""" We are intrested in traffic volume prediction in Austin City""""
 
 ###########################################
 ##DATA PREPROCESSING
