@@ -292,16 +292,41 @@ X_train,Y_train,X_test,Y_test=train_test_set(xlist,ylist)
 
 #prediction of the traffic for December 2019 based on the previous 5 months
 #=last sample in X_test
-for
-true_seq=list(X_test[len(X_test)-1].detach().numpy())+list(Y_test[len(Y_test)-1].detach().numpy())
-pred_seq=mod(X_test[len(X_test)-1].view(1,1,-1)).detach().numpy()
+true_seq=list(X_test[len(X_test)-2].detach().numpy())+list(Y_test[len(Y_test)-2].detach().numpy())
+pred_seq=mod(X_test[len(X_test)-2].view(1,1,-1)).detach().numpy()
 pred_seq=list(np.transpose(pred_seq).reshape(720))
-index=[ i for i in range(len(X_test))]
-index_y=[i for i in range(len(Y_test))]
+index=[ i for i in range(len(true_seq))]
+index_y=[i for i in range(len(true_seq)-len(pred_seq),len(true_seq))]
 fig, ax = plt.subplots()
 ax.set_title('Comparison between the predicted traffic and the real one')
 ax.plot(index,true_seq,label='real traffic')
 ax.plot(index_y,pred_seq,label='predicted traffic')
+ax.legend()
+plt.show()
+ind=[ i for i in range(len(kk))]
+kk=list(X_test[len(X_test)-2].detach().numpy())
+plt.plot(ind,kk)
+
+#Prediction for january 2020
+
+#the last sequence of 3 months in 2019
+last_seq=list(xlist[len(X_test)-1].detach().numpy())
+fin=len(Y_test)
+fin2=len(Y_test[fin-1])
+ytest=list(Y_test[fin-1].detach().numpy())
+for i in range(fin2):
+    last_seq.append(ytest[i])
+    
+last_seq=torch.tensor(last_seq,dtype=torch.float32)
+last_seq=last_seq[720:] #3600 len
+pred_seq=mod(last_seq.view(1,1,-1)).detach().numpy()
+pred_seq=list(np.transpose(pred_seq).reshape(720))
+index=[ i for i in range(len(last_seq))]
+index_y=[i for i in range(len(last_seq),len(last_seq)+len(pred_seq))]
+fig, ax = plt.subplots()
+ax.set_title('Prediction of January 2020')
+ax.plot(index,last_seq,label='last 3 months of 2019')
+ax.plot(index_y,pred_seq,label='traffic in January')
 ax.legend()
 plt.show()
 
