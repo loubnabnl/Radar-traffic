@@ -123,7 +123,35 @@ for i in range(len(volume)):
 ###########################################
 ## SLIDING WINDOW
 ###########################################
-    
+#building the sliding window
+#n_steps=24*30*2 #2 months
+#horizon=24*7 #1 week
+#min count in data is 11491 we will have a lot more than 7(mincount//n_steps) samples-we only move the window by 24*7
+
+def split_ts(seq,horizon=24*30,n_steps=24*30*3):
+    """ this function take in arguments a traffic Time Series for the couple (l,d)
+    and applies a sliding window of length n_steps to generates samples having this 
+    length and their labels (to be predicted) whose size is horizon
+    """
+    #for the Min-Max normalization X-min(seq)/max(seq)-min(seq)
+    max_seq=max(seq)
+    min_seq=min(seq)
+    seq_norm=max_seq-min_seq
+    xlist, ylist = [], []
+    for i in range(len(seq)//horizon):
+        end= i*horizon + n_steps
+        if end+horizon > len(seq)-1:
+            break
+        xx = (seq[i*horizon:end]-min_seq)/seq_norm
+        xlist.append(torch.tensor(xx,dtype=torch.float32))
+        yy = (seq[end:(end+horizon)]-min_seq)/seq_norm
+        ylist.append(torch.tensor(yy,dtype=torch.float32))
+    print("number of samples %d and sample size %d (%d months)" %(len(xlist),len(xlist[0]),n_steps/(24*30)))
+    return(xlist,ylist)
+
+###########################################
+## Model: CNN
+###########################################
 #goal: Predict one MONTH traffic(for each day per hour) based on the past 3/5 months
 ##convolutional neural network with a sliding window
 #this network structure and the splitting method were inspired from Mr Christophe Cerisara's code for a problem of sales prediction
@@ -156,31 +184,6 @@ class TimeCNN(nn.Module):
         out = self.fc2(out)
         return out
 
-#building the sliding window
-#n_steps=24*30*2 #2 months
-#horizon=24*7 #1 week
-#min count in data is 11491 we will have a lot more than 7(mincount//n_steps) samples-we only move the window by 24*7
-
-def split_ts(seq,horizon=24*30,n_steps=24*30*3):
-    """ this function take in arguments a traffic Time Series for the couple (l,d)
-    and applies a sliding window of length n_steps to generates samples having this 
-    length and their labels (to be predicted) whose size is horizon
-    """
-    #for the Min-Max normalization X-min(seq)/max(seq)-min(seq)
-    max_seq=max(seq)
-    min_seq=min(seq)
-    seq_norm=max_seq-min_seq
-    xlist, ylist = [], []
-    for i in range(len(seq)//horizon):
-        end= i*horizon + n_steps
-        if end+horizon > len(seq)-1:
-            break
-        xx = (seq[i*horizon:end]-min_seq)/seq_norm
-        xlist.append(torch.tensor(xx,dtype=torch.float32))
-        yy = (seq[end:(end+horizon)]-min_seq)/seq_norm
-        ylist.append(torch.tensor(yy,dtype=torch.float32))
-    print("number of samples %d and sample size %d (%d months)" %(len(xlist),len(xlist[0]),n_steps/(24*30)))
-    return(xlist,ylist)
 
 def train_test_set(xlist,ylist):
     """ this functions splits the samples and labels datasets xlist and ylist
